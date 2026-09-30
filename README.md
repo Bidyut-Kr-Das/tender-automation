@@ -2,7 +2,7 @@
 ---
 config:
   flowchart:
-    curve: linear
+    curve: linear 
 ---
 graph TD;
         __start__([<p>__start__</p>]):::first
