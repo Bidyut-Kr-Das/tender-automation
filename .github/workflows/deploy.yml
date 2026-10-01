@@ -75,10 +75,10 @@ jobs:
 
           docker compose pull
 
-          docker compose up -d --scale automation-worker=2 --scale parsing-worker=3
+          docker compose up -d --scale automation-v2-tasks=1 --scale automation-v2-parsing=1 automation-v2-tasks automation-v2-parsing automation-v2-api
 
           # Cleanup old automation-worker images
-          $repo = "ghcr.io/laser-power-infra/automation-worker"
+          $repo = "ghcr.io/laser-power-infra/django-worker"
           $allImages = docker images --filter "reference=$repo" --format "{{.ID}}" | Select-Object -Unique
           $oldImages = $allImages | Select-Object -Skip 2
 
@@ -90,7 +90,7 @@ jobs:
           }
 
           # Cleanup old parsing-worker images
-          $repo = "ghcr.io/laser-power-infra/parsing-worker"
+          $repo = "ghcr.io/laser-power-infra/django-worker"
           $allImages = docker images --filter "reference=$repo" --format "{{.ID}}" | Select-Object -Unique
           $oldImages = $allImages | Select-Object -Skip 2
 
