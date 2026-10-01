@@ -75,7 +75,8 @@ jobs:
 
           docker compose pull
 
-          docker compose up -d --scale automation-v2-tasks=1 --scale automation-v2-parsing=1 automation-v2-tasks automation-v2-parsing automation-v2-api
+          # docker compose up -d --scale automation-v2-tasks=1 --scale automation-v2-parsing=1 automation-v2-tasks automation-v2-parsing automation-v2-api
+          docker compose up -d --scale automation-worker=2 --scale parsing-worker=1 
 
           # Cleanup old automation-worker images
           $repo = "ghcr.io/laser-power-infra/django-worker"
