@@ -58,6 +58,63 @@ services:
     networks: 
       - infra
 
+  # automation-v2: stateless workers + webhook registration. Only DB is AUTOMATION_V2_DATABASE_URL.
+  automation-v2-tasks:
+    image: ghcr.io/laser-power-infra/django-worker:${APP_VERSION:-latest}
+    command: python manage.py consume_tender_tasks_v2
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings_v2
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    networks:
+      - infra
+
+  automation-v2-parsing:
+    image: ghcr.io/laser-power-infra/django-worker:${APP_VERSION:-latest}
+    command: python manage.py consume_tender_parsing_v2
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings_v2
+      # same network paths/volumes as parsing-worker (costing network files)
+      CONDUTOR_PATH: /mnt/condutor/Tenders-bd/Condutor
+      INDEXER_NETWORK_PATH: /mnt/indexer/COSTING & INVOLVEMENT
+      COSTING_FILE_NETWORK_HOST_PATH: /mnt/costing/COSTING & INVOLVEMENT
+    volumes:
+      - condutor:/mnt/condutor
+      - indexer:/mnt/indexer
+      - costing:/mnt/costing
+      - ./credentials.json:/app/credentials:ro
+      - ./token.json:/app/token:rw
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    networks:
+      - infra
+
+  automation-v2-webhook-retry:
+    image: ghcr.io/laser-power-infra/django-worker:${APP_VERSION:-latest}
+    command: python manage.py consume_webhook_retry_v2
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings_v2
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    networks:
+      - infra
+
+  automation-v2-api:
+    image: ghcr.io/laser-power-infra/django-worker:${APP_VERSION:-latest}
+    command: sh -c "python manage.py migrate --noinput && daphne -b 0.0.0.0 -p 8000 config.asgi:application"
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings_v2
+    ports:
+      - "4122:8000"
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    networks:
+      - infra
+
   kestra-automation:
     build:
       context: ./kestra

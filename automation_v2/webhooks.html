@@ -1,0 +1,617 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tender Automation webhooks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --fog: #F4F6F8;
+    --paper: #FFFFFF;
+    --ink: #17212B;
+    --slate: #56677A;
+    --line: #DCE2E8;
+    --line-soft: #EBEFF3;
+    --laser: #D7263D;
+    --laser-dark: #B51C31;
+    --ok: #1E8A5A;
+    --ok-tint: #E4F3EC;
+    --fail: #B4541A;
+    --fail-tint: #FBEDE3;
+    --sans: "Schibsted Grotesk", system-ui, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, monospace;
+    --focus: 0 0 0 2px var(--paper), 0 0 0 4px var(--laser);
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--fog); color: var(--ink);
+    font: 400 15px/1.5 var(--sans);
+  }
+  button, input { font: inherit; color: inherit; }
+  :focus-visible { outline: none; box-shadow: var(--focus); }
+  .mono { font-family: var(--mono); font-size: 13px; }
+  .muted { color: var(--slate); }
+
+  main { max-width: 1040px; margin: 0 auto; padding: 48px 24px 80px; }
+  header { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
+  h1 { font-size: 22px; font-weight: 600; margin: 0 0 2px; letter-spacing: -0.01em; }
+  header p { margin: 0; color: var(--slate); }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    height: 36px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--line);
+    background: var(--paper); font-weight: 500; cursor: pointer; white-space: nowrap;
+    transition: background-color .12s, border-color .12s;
+  }
+  .btn:hover { background: var(--fog); }
+  .btn.primary { background: var(--laser); border-color: var(--laser); color: #fff; }
+  .btn.primary:hover { background: var(--laser-dark); border-color: var(--laser-dark); }
+  .btn.danger { color: var(--laser); }
+  .btn.small { height: 28px; padding: 0 10px; font-size: 13px; border-radius: 6px; }
+  .btn[disabled] { opacity: .6; cursor: progress; }
+  .icon-btn {
+    width: 32px; height: 32px; border-radius: 6px; border: 0; background: none;
+    display: inline-grid; place-items: center; cursor: pointer; color: var(--slate);
+  }
+  .icon-btn:hover { background: var(--fog); color: var(--ink); }
+
+  /* Table */
+  .surface { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    text-align: left; font-size: 13px; font-weight: 500; color: var(--slate);
+    padding: 10px 16px; border-bottom: 1px solid var(--line); background: #FAFBFC;
+  }
+  td { padding: 14px 16px; border-bottom: 1px solid var(--line-soft); vertical-align: middle; }
+  tr:last-child td { border-bottom: 0; }
+  tr.inactive .name, tr.inactive .url, tr.inactive .tags { opacity: .5; }
+  .name { font-weight: 600; }
+  .url { color: var(--slate); max-width: 360px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .client { display: inline-flex; align-items: center; gap: 2px; }
+  .col-actions { width: 48px; text-align: right; }
+
+  /* Subscribed events, exact names */
+  .tags { display: flex; flex-wrap: wrap; gap: 4px; max-width: 300px; }
+  .tag { font-family: var(--mono); font-size: 12px; line-height: 1.4; padding: 4px 8px; border-radius: 6px; background: var(--fog); white-space: nowrap; }
+  .tag.more { font-family: var(--sans); color: var(--slate); background: none; cursor: help; }
+
+  /* Switch */
+  .switch { position: relative; display: inline-block; width: 34px; height: 20px; }
+  .switch input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+  .switch span { position: absolute; inset: 0; border-radius: 99px; background: var(--line); transition: background-color .15s; pointer-events: none; }
+  .switch span::after {
+    content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%;
+    background: #fff; box-shadow: 0 1px 2px rgba(23,33,43,.25); transition: transform .15s;
+  }
+  .switch input:checked + span { background: var(--ok); }
+  .switch input:checked + span::after { transform: translateX(14px); }
+  .switch input:focus-visible + span { box-shadow: var(--focus); }
+
+  /* States */
+  .state { padding: 56px 24px; text-align: center; }
+  .state h2 { font-size: 15px; font-weight: 600; margin: 0 0 4px; }
+  .state p { margin: 0 auto 20px; color: var(--slate); max-width: 44ch; }
+  .skeleton td div { height: 12px; border-radius: 4px; background: linear-gradient(90deg, var(--line-soft), var(--fog), var(--line-soft)); background-size: 200% 100%; animation: shimmer 1.2s infinite linear; }
+  @keyframes shimmer { to { background-position: -200% 0; } }
+
+  /* Row menu (popover) */
+  .menu {
+    margin: 0; padding: 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper);
+    box-shadow: 0 2px 4px rgba(23,33,43,.08); min-width: 168px; inset: auto;
+  }
+  .menu button { display: block; width: 100%; text-align: left; padding: 7px 10px; border: 0; background: none; border-radius: 5px; cursor: pointer; }
+  .menu button:hover, .menu button:focus-visible { background: var(--fog); box-shadow: none; }
+  .menu hr { border: 0; border-top: 1px solid var(--line-soft); margin: 4px 0; }
+  .menu .danger { color: var(--laser); }
+
+  /* Dialogs */
+  dialog {
+    width: min(520px, calc(100vw - 32px)); padding: 24px; border: 0; border-radius: 14px;
+    background: var(--paper); color: var(--ink); box-shadow: 0 24px 64px rgba(23,33,43,.22);
+  }
+  #form-dlg { width: min(640px, calc(100vw - 32px)); }
+  dialog.narrow { width: min(400px, calc(100vw - 32px)); }
+  dialog::backdrop { background: rgba(23,33,43,.36); }
+  .dlg-body { padding: 0; }
+  .dlg-body h2 { font-size: 20px; font-weight: 600; margin: 0 0 4px; }
+  .dlg-body > p { margin: 0 0 20px; color: var(--slate); }
+  .dlg-foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line-soft); }
+
+  .field { margin-bottom: 16px; }
+  .field > label, .legend { display: block; font-weight: 500; margin-bottom: 6px; }
+  .field input {
+    width: 100%; height: 38px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper);
+  }
+  .field input.mono { font-size: 14px; }
+  .field input:focus-visible { border-color: var(--laser); }
+  .field input[aria-invalid="true"] { border-color: var(--laser); }
+  .error { color: var(--laser); font-size: 13px; margin: 6px 0 0; min-height: 0; }
+  .error:empty { display: none; }
+
+  /* Event table */
+  .events-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+  .events-head .legend { margin: 0; margin-right: auto; }
+  .events-head .muted { font-size: 13px; }
+  .link-btn { border: 0; background: none; color: var(--slate); font-size: 13px; padding: 4px 8px; border-radius: 6px; cursor: pointer; }
+  .link-btn:hover { color: var(--ink); background: var(--fog); }
+  .evt-table { max-height: 320px; overflow-y: auto; border: 1px solid var(--line); border-radius: 8px; overscroll-behavior: contain; }
+  .evt-row {
+    display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 34px; gap: 16px; align-items: center;
+    padding: 10px 14px; border-top: 1px solid var(--line-soft);
+  }
+  label.evt-row { cursor: pointer; }
+  label.evt-row:hover { background: #FAFBFC; }
+  .evt-head { position: sticky; top: 0; z-index: 1; border-top: 0; padding-block: 8px; background: #FAFBFC; font-size: 13px; font-weight: 500; color: var(--slate); border-bottom: 1px solid var(--line); }
+  .evt-head + .evt-row { border-top: 0; }
+  .evt-name { font-family: var(--mono); font-size: 13px; font-weight: 500; overflow-wrap: anywhere; }
+  .evt-desc { font-size: 13px; color: var(--slate); }
+  /* Event switches: red = off, green = on */
+  .switch.rg span { background: var(--laser); }
+  .switch.rg input:checked + span { background: var(--ok); }
+
+  /* Credentials */
+  .cred { margin-bottom: 14px; }
+  .cred-label { font-weight: 500; margin-bottom: 6px; }
+  .cred-box {
+    display: flex; align-items: center; gap: 6px; padding: 6px 6px 6px 12px;
+    border: 1px solid var(--line); border-radius: 8px; background: var(--fog);
+  }
+  .cred-box code { flex: 1; min-width: 0; overflow-wrap: anywhere; font-family: var(--mono); font-size: 13px; }
+  .note { font-size: 13px; color: var(--slate); margin: 4px 0 0; }
+  .swap-in { animation: swap .22s ease-out; }
+  @keyframes swap { from { opacity: 0; transform: translateY(4px); } }
+
+  /* Toast */
+  #toast {
+    position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 12px); opacity: 0;
+    background: var(--ink); color: #fff; padding: 10px 16px; border-radius: 8px; font-size: 14px;
+    transition: opacity .2s, transform .2s; pointer-events: none; max-width: calc(100vw - 32px);
+  }
+  #toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  @media (max-width: 640px) {
+    main { padding: 28px 16px 64px; }
+    header { flex-direction: column; align-items: stretch; }
+    thead { display: none; }
+    table, tbody { display: block; }
+    tbody tr { display: grid; grid-template-columns: 1fr auto auto; gap: 8px 12px; padding: 14px 16px; border-bottom: 1px solid var(--line-soft); }
+    tbody tr:last-child { border-bottom: 0; }
+    td { padding: 0; border: 0; }
+    td.who { grid-column: 1 / -1; }
+    td.client-cell { grid-column: 1 / -1; }
+    .url { max-width: none; }
+    .evt-row { grid-template-columns: minmax(0, 1fr) 34px; gap: 2px 12px; }
+    .evt-row .evt-desc { grid-row: 2; }
+    .evt-row .switch { grid-column: 2; grid-row: 1 / span 2; }
+    .evt-head { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <h1>Webhooks</h1>
+      <p>Endpoints this app notifies when tender files are fetched or parsed.</p>
+    </div>
+    <button class="btn primary" id="new-btn" type="button">Register webhook</button>
+  </header>
+
+  <section class="surface" id="list" aria-live="polite"></section>
+</main>
+
+<!-- Register / edit -->
+<dialog id="form-dlg" aria-labelledby="form-title">
+  <form id="form" novalidate>
+    <div class="dlg-body">
+      <h2 id="form-title">Register webhook</h2>
+      <p id="form-sub"></p>
+      <div class="field">
+        <label for="f-name">Name</label>
+        <input id="f-name" name="name" maxlength="100" autocomplete="off" placeholder="CRM sync" required>
+        <p class="error" id="e-name"></p>
+      </div>
+      <div class="field">
+        <label for="f-url">Endpoint URL</label>
+        <input id="f-url" name="url" class="mono" type="url" inputmode="url" autocomplete="off" placeholder="https://example.com/hooks/tender" required>
+        <p class="error" id="e-url"></p>
+      </div>
+      <div class="field" role="group" aria-labelledby="events-legend">
+        <div class="events-head">
+          <span class="legend" id="events-legend">Events</span>
+          <span class="muted" id="evt-count"></span>
+          <button type="button" class="link-btn" id="select-all">Turn all on</button>
+        </div>
+        <div class="evt-table" id="options"></div>
+        <p class="error" id="e-events"></p>
+      </div>
+    </div>
+    <div class="dlg-foot">
+      <button class="btn" type="button" data-close>Cancel</button>
+      <button class="btn primary" type="submit" id="submit-btn">Register webhook</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Credentials -->
+<dialog id="cred-dlg" aria-labelledby="cred-title">
+  <div class="dlg-body swap-in">
+    <h2 id="cred-title">Webhook registered</h2>
+    <p id="cred-sub">Share these with the receiving service. It uses the secret to verify requests come from this app.</p>
+    <div class="cred">
+      <div class="cred-label">Client ID</div>
+      <div class="cred-box"><code id="c-client"></code><button class="btn small" type="button" data-copy="c-client">Copy</button></div>
+    </div>
+    <div class="cred">
+      <div class="cred-label">Secret</div>
+      <div class="cred-box">
+        <code id="c-secret"></code>
+        <button class="btn small" type="button" id="reveal-btn" aria-pressed="false">Show</button>
+        <button class="btn small" type="button" data-copy="c-secret">Copy</button>
+      </div>
+      <p class="note">Keep it private. Rotate it from the row menu if it leaks.</p>
+    </div>
+  </div>
+  <div class="dlg-foot"><button class="btn primary" type="button" data-close autofocus>Done</button></div>
+</dialog>
+
+<!-- Confirm -->
+<dialog id="confirm-dlg" class="narrow" aria-labelledby="confirm-title">
+  <div class="dlg-body">
+    <h2 id="confirm-title"></h2>
+    <p id="confirm-text" style="margin:0"></p>
+  </div>
+  <div class="dlg-foot">
+    <button class="btn" type="button" data-close autofocus>Cancel</button>
+    <button class="btn primary" type="button" id="confirm-btn"></button>
+  </div>
+</dialog>
+
+<div class="menu" id="row-menu" popover role="menu">
+  <button type="button" role="menuitem" data-act="edit">Edit</button>
+  <button type="button" role="menuitem" data-act="secret">Show credentials</button>
+  <button type="button" role="menuitem" data-act="rotate">Rotate secret</button>
+  <hr>
+  <button type="button" role="menuitem" data-act="delete" class="danger">Delete</button>
+</div>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+const API = "/api/webhooks";
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+let hooks = [];
+let editing = null;
+let menuFor = null;
+
+async function api(path, opts = {}) {
+  const res = await fetch(API + path, { headers: { "Content-Type": "application/json" }, ...opts });
+  if (res.status === 204) return null;
+  const body = await res.json().catch(() => null);
+  if (!res.ok) {
+    const err = new Error(typeof body?.detail === "string" ? body.detail : `Request failed (${res.status})`);
+    // DRF returns {"field": ["msg"]} (or {"events": {"0": ["msg"]}}); map to the {loc, msg} list the form expects.
+    err.detail = body?.detail ?? (body && typeof body === "object"
+      ? Object.entries(body).map(([k, v]) => ({ loc: ["body", k], msg: String([v].flat(2).map((x) => (x && typeof x === "object" ? Object.values(x).flat()[0] : x))[0]) }))
+      : undefined);
+    throw err;
+  }
+  return body;
+}
+
+let toastTimer;
+function toast(msg) {
+  const t = $("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), 2600);
+}
+
+/* ---------- List ---------- */
+function renderLoading() {
+  const row = '<tr class="skeleton"><td><div style="width:60%"></div><div style="width:80%;margin-top:8px"></div></td><td><div style="width:70%"></div></td><td><div style="width:40px"></div></td><td><div style="width:34px"></div></td><td></td></tr>';
+  $("list").innerHTML = `<table aria-busy="true"><tbody>${row.repeat(3)}</tbody></table>`;
+}
+
+function renderError(msg) {
+  $("list").innerHTML = `<div class="state"><h2>Couldn't load webhooks</h2><p>${esc(msg)}</p><button class="btn" type="button" id="retry">Try again</button></div>`;
+  $("retry").onclick = load;
+}
+
+function tags(events) {
+  const shown = events.slice(0, 2).map((e) => `<span class="tag">${esc(e)}</span>`).join("");
+  const rest = events.length - 2;
+  const more = rest > 0 ? `<span class="tag more" title="${esc(events.slice(2).join(", "))}">+${rest} more</span>` : "";
+  return `<div class="tags">${shown}${more}</div>`;
+}
+
+function render() {
+  if (!hooks.length) {
+    $("list").innerHTML = `<div class="state"><h2>No webhooks yet</h2><p>Register an endpoint to get notified when tender files are fetched or parsed.</p><button class="btn primary" type="button" id="empty-new">Register webhook</button></div>`;
+    $("empty-new").onclick = () => openForm();
+    return;
+  }
+  const rows = hooks.map((h) => `
+    <tr data-id="${h.id}" class="${h.is_active ? "" : "inactive"}">
+      <td class="who"><div class="name">${esc(h.name)}</div><div class="url mono" title="${esc(h.url)}">${esc(h.url)}</div></td>
+      <td class="client-cell"><span class="client"><span class="mono">${esc(h.client_id)}</span>
+        <button class="icon-btn" type="button" data-copy-text="${esc(h.client_id)}" aria-label="Copy client ID for ${esc(h.name)}">
+          <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><rect x="5" y="5" width="9" height="9" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+        </button></span></td>
+      <td>${tags(h.events)}</td>
+      <td><label class="switch"><input type="checkbox" role="switch" data-toggle ${h.is_active ? "checked" : ""} aria-label="${esc(h.name)} active"><span></span></label></td>
+      <td class="col-actions"><button class="icon-btn" type="button" data-menu aria-haspopup="menu" aria-label="Actions for ${esc(h.name)}">
+        <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="3" cy="8" r="1.4" fill="currentColor"/><circle cx="8" cy="8" r="1.4" fill="currentColor"/><circle cx="13" cy="8" r="1.4" fill="currentColor"/></svg>
+      </button></td>
+    </tr>`).join("");
+  $("list").innerHTML = `<table><thead><tr><th>Name and endpoint</th><th>Client ID</th><th>Events</th><th>Active</th><th class="col-actions"><span class="sr-only">Actions</span></th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+async function load() {
+  renderLoading();
+  try {
+    const [events, list] = await Promise.all([api("/events"), api("")]);
+    hooks = list;
+    buildOptions(events);
+    render();
+  } catch (e) {
+    renderError(e.message);
+  }
+}
+
+const byId = (id) => hooks.find((h) => h.id === Number(id));
+
+async function copy(text, btn) {
+  try {
+    await navigator.clipboard.writeText(text);
+    if (btn && btn.classList.contains("btn")) {
+      const prev = btn.textContent;
+      btn.textContent = "Copied";
+      setTimeout(() => (btn.textContent = prev), 1500);
+    } else toast("Copied to clipboard");
+  } catch {
+    toast("Copy failed. Select the text and copy it manually.");
+  }
+}
+
+$("list").addEventListener("click", (e) => {
+  const copyBtn = e.target.closest("[data-copy-text]");
+  if (copyBtn) return copy(copyBtn.dataset.copyText, copyBtn);
+  const menuBtn = e.target.closest("[data-menu]");
+  if (menuBtn) openMenu(menuBtn);
+});
+
+$("list").addEventListener("change", async (e) => {
+  if (!e.target.matches("[data-toggle]")) return;
+  const input = e.target;
+  const tr = input.closest("tr");
+  const h = byId(tr.dataset.id);
+  const next = input.checked;
+  tr.classList.toggle("inactive", !next);
+  try {
+    Object.assign(h, await api(`/${h.id}`, { method: "PATCH", body: JSON.stringify({ is_active: next }) }));
+    toast(`${h.name} ${next ? "activated" : "paused"}`);
+  } catch (err) {
+    input.checked = !next;
+    tr.classList.toggle("inactive", next);
+    toast(`Couldn't update ${h.name}: ${err.message}`);
+  }
+});
+
+/* ---------- Row menu ---------- */
+const menu = $("row-menu");
+function openMenu(btn) {
+  menuFor = byId(btn.closest("tr").dataset.id);
+  menu.showPopover();
+  const r = btn.getBoundingClientRect();
+  const w = menu.offsetWidth, h = menu.offsetHeight;
+  const top = r.bottom + 4 + h > innerHeight ? r.top - h - 4 : r.bottom + 4;
+  menu.style.top = `${Math.max(8, top)}px`;
+  menu.style.left = `${Math.max(8, Math.min(r.right - w, innerWidth - w - 8))}px`;
+  menu.querySelector("button").focus();
+}
+menu.addEventListener("keydown", (e) => {
+  if (!["ArrowDown", "ArrowUp"].includes(e.key)) return;
+  e.preventDefault();
+  const items = [...menu.querySelectorAll("button")];
+  const i = items.indexOf(document.activeElement);
+  items[(i + (e.key === "ArrowDown" ? 1 : -1) + items.length) % items.length].focus();
+});
+menu.addEventListener("click", (e) => {
+  const act = e.target.closest("[data-act]")?.dataset.act;
+  if (!act) return;
+  menu.hidePopover();
+  const h = menuFor;
+  if (act === "edit") openForm(h);
+  if (act === "secret") showCreds(h, "Credentials", `For ${h.name}.`);
+  if (act === "rotate") confirmAction({
+    title: "Rotate secret?",
+    text: `${h.name} gets a new secret now. Services using the old secret will stop verifying requests until they switch.`,
+    cta: "Rotate secret",
+    run: async () => {
+      const updated = await api(`/${h.id}/rotate-secret`, { method: "POST" });
+      Object.assign(h, updated);
+      showCreds(h, "Secret rotated", `Give the new secret to the service behind ${h.name}.`);
+    },
+  });
+  if (act === "delete") confirmAction({
+    title: "Delete webhook?",
+    text: `${h.name} stops receiving events and its credentials stop working. This can't be undone.`,
+    cta: "Delete webhook",
+    run: async () => {
+      await api(`/${h.id}`, { method: "DELETE" });
+      hooks = hooks.filter((x) => x.id !== h.id);
+      render();
+      toast(`${h.name} deleted`);
+    },
+  });
+});
+
+/* ---------- Event options ---------- */
+function buildOptions(events) {
+  const head = '<div class="evt-row evt-head" aria-hidden="true"><span>Event</span><span>Description</span><span>On</span></div>';
+  $("options").innerHTML = head + events.map(({ name, description }) => `
+    <label class="evt-row">
+      <span class="evt-name">${esc(name)}</span>
+      <span class="evt-desc">${esc(description)}</span>
+      <span class="switch rg"><input type="checkbox" role="switch" name="events" value="${esc(name)}" aria-label="${esc(name)}: ${esc(description)}"><span></span></span>
+    </label>`).join("");
+  syncSelectAll();
+}
+
+const eventBoxes = () => [...$("options").querySelectorAll("input")];
+function syncSelectAll() {
+  const boxes = eventBoxes();
+  const on = boxes.filter((b) => b.checked).length;
+  $("evt-count").textContent = `${on} of ${boxes.length} on`;
+  $("select-all").textContent = boxes.length && on === boxes.length ? "Turn all off" : "Turn all on";
+}
+$("select-all").onclick = () => {
+  const on = !eventBoxes().every((b) => b.checked);
+  eventBoxes().forEach((b) => (b.checked = on));
+  syncSelectAll();
+  setError("events", "");
+};
+$("options").addEventListener("change", () => { syncSelectAll(); setError("events", ""); });
+
+/* ---------- Form ---------- */
+function setError(field, msg) {
+  $(`e-${field}`).textContent = msg;
+  const input = $(`f-${field}`);
+  if (input) input.setAttribute("aria-invalid", msg ? "true" : "false");
+}
+
+function openForm(h = null) {
+  editing = h;
+  const f = $("form");
+  f.reset();
+  ["name", "url", "events"].forEach((k) => setError(k, ""));
+  $("form-title").textContent = h ? "Edit webhook" : "Register webhook";
+  $("form-sub").textContent = h
+    ? "Changes apply to the next event. The client ID and secret stay the same."
+    : "Pick the events this endpoint needs. You get a client ID and secret after saving.";
+  $("submit-btn").textContent = h ? "Save changes" : "Register webhook";
+  if (h) {
+    f.name.value = h.name;
+    f.url.value = h.url;
+    eventBoxes().forEach((b) => (b.checked = h.events.includes(b.value)));
+  }
+  syncSelectAll();
+  $("form-dlg").showModal();
+  $("f-name").focus();
+}
+
+function validate(data) {
+  let ok = true;
+  if (!data.name) { setError("name", "Give it a name you'll recognise."); ok = false; }
+  let url;
+  try { url = new URL(data.url); } catch {}
+  if (!url || !/^https?:$/.test(url.protocol)) { setError("url", "Enter a full URL starting with https:// or http://"); ok = false; }
+  if (!data.events.length) { setError("events", "Turn on at least one event."); ok = false; }
+  return ok;
+}
+
+$("form").addEventListener("input", (e) => { if (e.target.id === "f-name" || e.target.id === "f-url") setError(e.target.id.slice(2), ""); });
+
+$("form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const f = e.currentTarget;
+  const data = { name: f.name.value.trim(), url: f.url.value.trim(), events: eventBoxes().filter((b) => b.checked).map((b) => b.value) };
+  if (!validate(data)) return f.querySelector('[aria-invalid="true"]')?.focus();
+  const btn = $("submit-btn");
+  const label = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = editing ? "Saving…" : "Registering…";
+  try {
+    if (editing) {
+      Object.assign(editing, await api(`/${editing.id}`, { method: "PATCH", body: JSON.stringify(data) }));
+      $("form-dlg").close();
+      render();
+      toast(`${editing.name} saved`);
+    } else {
+      const created = await api("", { method: "POST", body: JSON.stringify(data) });
+      hooks.unshift(created);
+      render();
+      $("form-dlg").close();
+      showCreds(created, "Webhook registered", "Share these with the receiving service. It uses the secret to verify requests come from this app.");
+    }
+  } catch (err) {
+    const fieldErr = Array.isArray(err.detail) && err.detail.find((d) => ["url", "name", "events"].includes(d.loc?.[1]));
+    if (fieldErr) setError(fieldErr.loc[1], fieldErr.msg);
+    else toast(err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = label;
+  }
+});
+
+/* ---------- Credentials ---------- */
+let secretValue = "";
+const mask = (s) => s.slice(0, 6) + "•".repeat(18);
+function showCreds(h, title, sub) {
+  secretValue = h.secret;
+  $("cred-title").textContent = title;
+  $("cred-sub").textContent = sub;
+  $("c-client").textContent = h.client_id;
+  $("c-secret").textContent = mask(h.secret);
+  $("reveal-btn").textContent = "Show";
+  $("reveal-btn").setAttribute("aria-pressed", "false");
+  const body = $("cred-dlg").querySelector(".dlg-body");
+  body.classList.remove("swap-in"); void body.offsetWidth; body.classList.add("swap-in");
+  $("cred-dlg").showModal();
+}
+$("reveal-btn").onclick = (e) => {
+  const shown = e.currentTarget.getAttribute("aria-pressed") === "true";
+  $("c-secret").textContent = shown ? mask(secretValue) : secretValue;
+  e.currentTarget.textContent = shown ? "Show" : "Hide";
+  e.currentTarget.setAttribute("aria-pressed", String(!shown));
+};
+document.querySelectorAll("[data-copy]").forEach((b) => {
+  b.onclick = () => copy(b.dataset.copy === "c-secret" ? secretValue : $(b.dataset.copy).textContent, b);
+});
+
+/* ---------- Confirm ---------- */
+let pending = null;
+function confirmAction({ title, text, cta, run }) {
+  pending = run;
+  $("confirm-title").textContent = title;
+  $("confirm-text").textContent = text;
+  $("confirm-btn").textContent = cta;
+  $("confirm-dlg").showModal();
+}
+$("confirm-btn").onclick = async (e) => {
+  const btn = e.currentTarget;
+  const label = btn.textContent;
+  btn.disabled = true;
+  try {
+    await pending();
+    $("confirm-dlg").close();
+  } catch (err) {
+    toast(err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = label;
+  }
+};
+
+/* ---------- Wiring ---------- */
+document.querySelectorAll("[data-close]").forEach((b) => (b.onclick = () => b.closest("dialog").close()));
+document.querySelectorAll("dialog").forEach((d) => d.addEventListener("click", (e) => { if (e.target === d) d.close(); }));
+$("new-btn").onclick = () => openForm();
+load();
+</script>
+</body>
+</html>
