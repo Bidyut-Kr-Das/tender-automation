@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_channel(queue: str):
-    channel = pika.BlockingConnection(pika.URLParameters(settings.RABBITMQ_URL)).channel()
+    channel = pika.BlockingConnection(pika.URLParameters(settings.MQ_URL)).channel()
     channel.queue_declare(queue=queue, durable=True)
     return channel
 

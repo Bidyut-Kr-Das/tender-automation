@@ -222,9 +222,9 @@ class Command(BaseCommand):
         global TEMP_DIR
         TEMP_DIR = options["temp_dir"]
 
-        if not settings.RABBITMQ_URL:
+        if not settings.MQ_URL:
             raise CommandError(
-                "RABBITMQ_URL is not set. Please configure it in your environment."
+                "MQ_URL is not set. Please configure it in your environment."
             )
 
         os.makedirs(TEMP_DIR, exist_ok=True)

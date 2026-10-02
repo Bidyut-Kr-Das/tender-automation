@@ -9,10 +9,10 @@ logger = logging.getLogger(__name__)
 
 
 def get_connection():
-    url = settings.RABBITMQ_URL
+    url = settings.MQ_URL
     if not url:
         raise ValueError(
-            "RABBITMQ_URL is not configured. Set the RABBITMQ_URL environment variable."
+            "MQ_URL is not configured. Set the MQ_URL environment variable."
         )
     params = pika.URLParameters(url)
     return pika.BlockingConnection(params)

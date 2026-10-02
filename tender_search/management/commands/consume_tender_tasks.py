@@ -224,9 +224,9 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         queue = settings.TENDER_TASKS_QUEUE
 
-        if not settings.RABBITMQ_URL:
+        if not settings.MQ_URL:
             raise CommandError(
-                "RABBITMQ_URL is not set. Please configure it in your environment."
+                "MQ_URL is not set. Please configure it in your environment."
             )
 
         self.stdout.write(f"Connecting to RabbitMQ, listening on queue: {queue}")

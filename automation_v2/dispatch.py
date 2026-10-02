@@ -92,7 +92,7 @@ def _publish(queue: str, msg: dict) -> None:
     import pika
     from django.conf import settings
 
-    conn = pika.BlockingConnection(pika.URLParameters(settings.RABBITMQ_URL))
+    conn = pika.BlockingConnection(pika.URLParameters(settings.MQ_URL))
     try:
         ch = conn.channel()
         declare_queues(ch)
