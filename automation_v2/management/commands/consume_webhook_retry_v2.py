@@ -28,7 +28,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
-        channel = pika.BlockingConnection(pika.URLParameters(settings.RABBITMQ_URL)).channel()
+        channel = pika.BlockingConnection(pika.URLParameters(settings.MQ_URL)).channel()
         declare_queues(channel)
         channel.basic_qos(prefetch_count=1)
         channel.basic_consume(queue=RETRY_QUEUE, on_message_callback=on_message)

@@ -60,7 +60,7 @@ else:
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-RABBITMQ_URL = os.getenv("RABBITMQ_URL", "")
+MQ_URL = os.getenv("MQ_URL", "")
 
 LASER_TENDER_COST_API = os.getenv("LASER_TENDER_COST_API", "")
 WORKER_API_KEY = os.getenv("WORKER_API_KEY", "")
