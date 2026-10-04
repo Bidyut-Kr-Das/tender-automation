@@ -3,7 +3,6 @@ import logging
 import uuid
 from pathlib import Path
 
-import pika
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone

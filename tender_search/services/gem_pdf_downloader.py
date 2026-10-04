@@ -6,39 +6,7 @@ from .file_storage import file_storage
 from .gem_pdf_parser_ai import save_extraction_to_db
 from django.conf import settings
 
-
-
-
-def delay(ms: int) -> None:
-    time.sleep(ms / 1000)
-
-
-def detect_chrome_path() -> str:
-    # Prefer path provided through environment variable
-    chrome_path = settings.CHROME_PATH
-
-    if chrome_path:
-        if os.path.exists(chrome_path):
-            return chrome_path
-
-        raise FileNotFoundError(
-            f"Chrome executable not found at CHROME_PATH: {chrome_path}"
-        )
-
-    # Fallback for local Windows development
-    candidates = [
-        r"C:\Program Files\Google\Chrome\Application\chrome.exe",
-        r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
-        r"C:\Program Files\Chromium\Application\chrome.exe",
-    ]
-
-    for p in candidates:
-        if os.path.exists(p):
-            return p
-
-    raise FileNotFoundError(
-        "Chrome not found. Set the CHROME_PATH environment variable."
-    )
+from .browser import delay, detect_chrome_path
 
 
 def perform_search(page, gem_id: str, check_bid_ra_status: bool = False) -> None:
@@ -68,9 +36,9 @@ def perform_search(page, gem_id: str, check_bid_ra_status: bool = False) -> None
     page.locator("#searchBidRA").click()
 
 
-def wait_for_search_results(page, gem_id: str, timeout: int = 15000) -> bool:
+def wait_for_search_results(page, gem_id: str, timeout: int = 15000, selector: str = "a.bid_no_hover") -> bool:
     try:
-        page.locator("a.bid_no_hover").filter(has_text=gem_id).wait_for(
+        page.locator(selector).filter(has_text=gem_id).first.wait_for(
             timeout=timeout, state="attached"
         )
         return True
@@ -115,8 +83,6 @@ def try_download(page, gem_id: str, download_dir: str) -> dict:
         f.write(body)
     print(f"  {gem_id}: PDF saved → {save_path} ({len(body)} bytes)")
     return {"success": True, "pdfPath": save_path}
-
-
 
 
 def download_gem_pdf(gem_id: str, download_dir: str = r"D:\temp") -> dict:

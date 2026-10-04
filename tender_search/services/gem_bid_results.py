@@ -7,13 +7,7 @@ from urllib.parse import urljoin
 from django.conf import settings
 from playwright.sync_api import sync_playwright, Page, TimeoutError as PwTimeoutError
 
-
-def delay(ms: int) -> None:
-    time.sleep(ms / 1000)
-
-
-def sleep_for_animation(ms: int) -> None:
-    delay(ms)
+from .browser import delay, detect_chrome_path
 
 
 def _parse_price(val):
@@ -101,49 +95,20 @@ def _save_to_db(gem_id: str, result: dict):
     print(f"  [DB] Saved {len(evaluations)} evaluations for {gem_id}")
 
 
-def detect_chrome_path() -> str:
-    # Prefer path provided through environment variable
-    chrome_path = settings.CHROME_PATH
-
-    if chrome_path:
-        if os.path.exists(chrome_path):
-            return chrome_path
-
-        raise FileNotFoundError(
-            f"Chrome executable not found at CHROME_PATH: {chrome_path}"
-        )
-
-    # Fallback for local Windows development
-    candidates = [
-        r"C:\Program Files\Google\Chrome\Application\chrome.exe",
-        r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
-        r"C:\Program Files\Chromium\Application\chrome.exe",
-    ]
-
-    for p in candidates:
-        if os.path.exists(p):
-            return p
-
-    raise FileNotFoundError(
-        "Chrome not found. Set the CHROME_PATH environment variable."
-    )
-
-
-
 def perform_search(page: Page, gem_id: str, check_bid_ra_status: bool = False) -> None:
     page.goto("https://bidplus.gem.gov.in/all-bids", wait_until="networkidle")
     page.locator("#searchBid").fill(gem_id, timeout=20000)
-    sleep_for_animation(1000)
+    delay(1000)
 
     search_dropdown = page.locator("button.dropdown-toggle.searchtype")
     if search_dropdown.count() > 0:
         search_dropdown.click()
-        sleep_for_animation(500)
+        delay(500)
         exact_option = page.locator("ul.dropdown-menu a, ul.dropdown-menu li").filter(has_text="Exact").first
         if exact_option.count() > 0:
             exact_option.click()
 
-    sleep_for_animation(1000)
+    delay(1000)
     page.locator("#searchBidRA").click()
 
 
@@ -153,7 +118,7 @@ def perform_search(page: Page, gem_id: str, check_bid_ra_status: bool = False) -
         ).first
         if checkbox.count() > 0 and not checkbox.is_checked():
             checkbox.click()
-        sleep_for_animation(1000)
+        delay(1000)
 
     page.locator("#searchBidRA").click()
 
@@ -436,7 +401,7 @@ def process_tender(page: Page, gem_id: str, browser) -> dict:
                 print(f"  {gem_id}: no data found on attempt {attempt}")
                 continue
 
-            sleep_for_animation(2000)
+            delay(2000)
 
             row_info = find_gem_id_result(page, gem_id)
             if not row_info:

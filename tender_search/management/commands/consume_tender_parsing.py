@@ -1,27 +1,23 @@
 import json
 import logging
 import os
-import re
 import time
-from pathlib import Path
 from pprint import pprint
 
-import requests
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
-from django.utils import timezone
 
 from tender_search.models import TenderMerged, TenderFiles
 from tender_search.queue import get_channel
-from tender_search.queue_types import TenderParsingMessage, CostingAttachmentParsing, parsing_adapter
+from tender_search.queue_types import parsing_adapter
 from tender_search.services.pdf_parser import parse_and_save_gem_pdf
 from tender_search.services.costing_excel_parse import parse_costing_excel
 from tender_search.services.boq_parser import process_boq
 from tender_search.services.gem_ra_pdf_parser import process_ra_document
+from tender_search.services.downloads import download_from_drive, download_from_url, extract_drive_file_id
 
 logger = logging.getLogger(__name__)
 
-DRIVE_FILE_ID_RE = re.compile(r"/file/d/([^/]+)/")
 TEMP_DIR = settings.TENDER_PARSING_TEMP_DIR
 
 FILE_SOURCE_BASE_PATH_ENV = {
@@ -47,54 +43,6 @@ def _resolve_network_path(decrypted_file_id: str) -> str:
     if not base_path:
         raise ValueError(f"Environment variable {env_var} is not set")
     return os.path.join(base_path, relative_path)
-
-
-def _extract_drive_file_id(url: str) -> str | None:
-    m = DRIVE_FILE_ID_RE.search(url)
-    return m.group(1) if m else None
-
-
-def _download_from_drive(file_id: str, dest_path: str) -> bool:
-    url = f"https://drive.google.com/uc?export=download&id={file_id}"
-    session = requests.Session()
-
-    response = session.get(url, stream=True)
-    response.raise_for_status()
-
-    content_type = response.headers.get("Content-Type", "")
-    if "text/html" in content_type:
-        first_chunk = response.iter_content(chunk_size=32768).__next__()
-        text = first_chunk.decode("utf-8", errors="replace")
-        m = re.search(r"confirm=([0-9A-Za-z\-_]+)", text)
-        if m:
-            confirm_token = m.group(1)
-            url = f"https://drive.google.com/uc?export=download&confirm={confirm_token}&id={file_id}"
-            response = session.get(url, stream=True)
-            response.raise_for_status()
-        else:
-            response = session.get(url, stream=True)
-            response.raise_for_status()
-
-    os.makedirs(os.path.dirname(dest_path), exist_ok=True)
-    with open(dest_path, "wb") as f:
-        for chunk in response.iter_content(chunk_size=8192):
-            if chunk:
-                f.write(chunk)
-
-    return True
-
-
-def _download_from_url(url: str, dest_path: str) -> bool:
-    # ponytail: direct http download for 192.168 tender-document urls; no auth/retry, add if needed
-    session = requests.Session()
-    response = session.get(url, stream=True, timeout=60)
-    response.raise_for_status()
-    os.makedirs(os.path.dirname(dest_path), exist_ok=True)
-    with open(dest_path, "wb") as f:
-        for chunk in response.iter_content(chunk_size=8192):
-            if chunk:
-                f.write(chunk)
-    return True
 
 
 def callback(ch, method, properties, body):
@@ -125,14 +73,14 @@ def callback(ch, method, properties, body):
             safe_name = reference_no.replace("/", "-")
             pdf_path = os.path.join(TEMP_DIR, f"{safe_name}.pdf")
 
-            file_id = _extract_drive_file_id(tf.url)
+            file_id = extract_drive_file_id(tf.url)
             if file_id:
                 logger.info("Downloading file_id=%s -> %s", file_id, pdf_path)
-                _download_from_drive(file_id, pdf_path)
+                download_from_drive(file_id, pdf_path)
             elif tf.url.startswith("http://") or tf.url.startswith("https://"):
                 # ponytail: direct tender-document url (e.g. 192.168.1.190), bypass Drive; add auth if needed
                 logger.info("Downloading direct URL -> %s : %s", pdf_path, tf.url)
-                _download_from_url(tf.url, pdf_path)
+                download_from_url(tf.url, pdf_path)
             else:
                 raise ValueError(f"Could not extract Drive file ID from URL: {tf.url}")
 

@@ -5,12 +5,10 @@ from playwright.sync_api import sync_playwright
 from django.conf import settings
 
 from .browser import detect_chrome_path
-from .file_storage import file_storage
 from .zip_utils import extract_and_upload
 
 
 def login_tender247(email: str, password: str, tender_id: str = "", drive_folder_id: str | None = None) -> dict:
-    drive_result = None
     file_path = None
     result_data = {}
     chrome_path = detect_chrome_path()

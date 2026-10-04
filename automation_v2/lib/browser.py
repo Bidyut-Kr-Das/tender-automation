@@ -1,6 +1,11 @@
-"""Copied from tender_search/services/browser.py (detect_chrome_path); DB code removed."""
+"""Copied from tender_search/services/browser.py (delay, detect_chrome_path); DB code removed."""
 import os
+import time
 from django.conf import settings
+
+
+def delay(ms: int) -> None:
+    time.sleep(ms / 1000)
 
 
 def detect_chrome_path() -> str:

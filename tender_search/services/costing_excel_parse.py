@@ -7,6 +7,8 @@ from datetime import datetime
 import openpyxl
 import requests
 from django.conf import settings
+
+from .boq_parser import _to_number
 from django.db import transaction
 from django.utils import timezone
 from pprint import pprint
@@ -221,18 +223,6 @@ def _download_drive_file(file_id: str, dest_path: str) -> None:
         except OSError:
             pass
         raise
-
-def _to_number(val):
-    if val is None:
-        return None
-    if isinstance(val, (int, float)):
-        return float(val) if val == val else None
-    s = str(val).strip().replace(",", "").strip()
-    try:
-        return float(s)
-    except ValueError:
-        return None
-
 
 def _strip_pct(val):
     if val is None:

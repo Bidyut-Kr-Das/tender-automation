@@ -6,26 +6,14 @@ import zipfile
 import fnmatch
 import openpyxl
 import xlrd
+from pathlib import Path
+
+from .zip_utils import _extract_all_nested
 
 
 def extract_zip(zip_path: str, extract_to: str) -> list[str]:
-    extracted_files = []
-
-    with zipfile.ZipFile(zip_path, "r") as zf:
-        zf.extractall(extract_to)
-
-    for root, _dirs, files in os.walk(extract_to):
-        for fname in files:
-            fpath = os.path.join(root, fname)
-            extracted_files.append(fpath)
-
-            if fname.lower().endswith(".zip"):
-                nested_dir = os.path.join(extract_to, fname.replace(".zip", "_extracted"))
-                os.makedirs(nested_dir, exist_ok=True)
-                nested_files = extract_zip(fpath, nested_dir)
-                extracted_files.extend(nested_files)
-
-    return extracted_files
+    _extract_all_nested(Path(zip_path), Path(extract_to))
+    return [str(p) for p in Path(extract_to).rglob("*") if p.is_file()]
 
 
 def find_boq_file(file_paths: list[str]) -> str | None:
@@ -59,135 +47,63 @@ def _find_columns(cells_with_col):
     return desc_col, qty_col, unit_col
 
 
-def _parse_boq_xlsx(file_path: str) -> list[dict]:
-    wb = openpyxl.load_workbook(file_path, data_only=True)
-    ws = wb.active
-    if ws is None:
-        raise ValueError("No active worksheet found")
-
+def _rows_to_items(rows: list) -> list[dict]:
+    """rows: one list of raw cell values per sheet row (None for empty cells)."""
     header_row = None
-    desc_col = qty_col = unit_col = None
-
-    for row in ws.iter_rows(min_row=1, max_row=20, values_only=False):
-        cells = [(str(c.value) if c.value is not None else "", c.column) for c in row]
-        d, q, u = _find_columns(cells)
+    for r, row in enumerate(rows[:20]):
+        d, q, u = _find_columns([(str(v) if v is not None else "", c) for c, v in enumerate(row)])
         if d is not None and (q is not None or u is not None):
-            desc_col = d
-            qty_col = q
-            unit_col = u
-            header_row = row[0].row
+            desc_col, qty_col, unit_col, header_row = d, q, u, r
             break
 
-    if header_row is None or desc_col is None:
-        wb.close()
+    if header_row is None:
         raise ValueError("Could not find header row with description + quantity/unit columns")
 
+    def at(row, col):
+        return row[col] if col is not None and col < len(row) else None
+
     items = []
-    for row in ws.iter_rows(min_row=header_row + 1, values_only=False):
-        desc_val = row[desc_col - 1].value if desc_col <= len(row) else None
+    for row in rows[header_row + 1:]:
+        desc_val = at(row, desc_col)
         desc = str(desc_val).strip() if desc_val is not None else ""
         if not desc or desc == "None" or _is_numeric(desc):
             continue
-
-        qty_raw = row[qty_col - 1].value if qty_col and qty_col <= len(row) else None
-        unit_raw = row[unit_col - 1].value if unit_col and unit_col <= len(row) else None
-
-        qty = _to_number(qty_raw)
+        qty = _to_number(at(row, qty_col))
+        unit_raw = at(row, unit_col)
         items.append({
             "description": desc,
             "quantity": qty if qty is not None else "no_quantity_available",
             "unit": str(unit_raw).strip() if unit_raw is not None else "",
         })
 
-    wb.close()
-
     if not items:
         raise ValueError("No data rows found under header")
-
     return items
+
+
+def _parse_boq_xlsx(file_path: str) -> list[dict]:
+    wb = openpyxl.load_workbook(file_path, data_only=True)
+    try:
+        ws = wb.active
+        if ws is None:
+            raise ValueError("No active worksheet found")
+        return _rows_to_items([list(r) for r in ws.iter_rows(values_only=True)])
+    finally:
+        wb.close()
 
 
 def _parse_boq_xls(file_path: str) -> list[dict]:
-    wb = xlrd.open_workbook(file_path)
-    ws = wb.sheet_by_index(0)
-
-    header_row = None
-    desc_col = qty_col = unit_col = None
-
-    for r in range(min(20, ws.nrows)):
-        cells = [(str(ws.cell_value(r, c)), c) for c in range(ws.ncols)]
-        d, q, u = _find_columns(cells)
-        if d is not None and (q is not None or u is not None):
-            desc_col = d
-            qty_col = q
-            unit_col = u
-            header_row = r
-            break
-
-    if header_row is None or desc_col is None:
-        raise ValueError("Could not find header row with description + quantity/unit columns")
-
-    items = []
-    for r in range(header_row + 1, ws.nrows):
-        desc = str(ws.cell_value(r, desc_col)).strip()
-        if not desc or desc == "None" or _is_numeric(desc):
-            continue
-
-        qty_raw = ws.cell_value(r, qty_col) if qty_col is not None else None
-        unit_raw = ws.cell_value(r, unit_col) if unit_col is not None else None
-
-        qty = _to_number(qty_raw)
-        items.append({
-            "description": desc,
-            "quantity": qty if qty is not None else "no_quantity_available",
-            "unit": str(unit_raw).strip() if unit_raw is not None else "",
-        })
-
-    if not items:
-        raise ValueError("No data rows found under header")
-
-    return items
+    ws = xlrd.open_workbook(file_path).sheet_by_index(0)
+    return _rows_to_items([ws.row_values(r) for r in range(ws.nrows)])
 
 
 def _parse_boq_csv(file_path: str) -> list[dict]:
     # ponytail: stdlib csv only, O(n) scan, no pandas; upgrade to pandas if large/encoding issues
     with open(file_path, "r", encoding="utf-8-sig", newline="") as f:
         rows = list(csv.reader(f))
-
     if not rows:
         raise ValueError("Empty CSV file")
-
-    header_row = None
-    desc_col = qty_col = unit_col = None
-    for r in range(min(20, len(rows))):
-        cells = [(str(rows[r][c]) if c < len(rows[r]) else "", c) for c in range(len(rows[r]))]
-        d, q, u = _find_columns(cells)
-        if d is not None and (q is not None or u is not None):
-            desc_col, qty_col, unit_col, header_row = d, q, u, r
-            break
-
-    if header_row is None or desc_col is None:
-        raise ValueError("Could not find header row with description + quantity/unit columns")
-
-    items = []
-    for r in range(header_row + 1, len(rows)):
-        row = rows[r]
-        desc = str(row[desc_col]).strip() if desc_col < len(row) else ""
-        if not desc or desc == "None" or _is_numeric(desc):
-            continue
-        qty_raw = row[qty_col].strip() if qty_col is not None and qty_col < len(row) else None
-        unit_raw = row[unit_col].strip() if unit_col is not None and unit_col < len(row) else None
-        qty = _to_number(qty_raw)
-        # ponytail: empty qty -> sentinel string, keeps downstream format stable; change to None if callers handle null
-        items.append({
-            "description": desc,
-            "quantity": qty if qty is not None else "no_quantity_available",
-            "unit": str(unit_raw).strip() if unit_raw is not None else "",
-        })
-
-    if not items:
-        raise ValueError("No data rows found under header")
-    return items
+    return _rows_to_items(rows)
 
 
 def parse_boq(file_path: str) -> list[dict]:

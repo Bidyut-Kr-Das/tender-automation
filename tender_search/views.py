@@ -1,4 +1,3 @@
-import json
 
 from django.http import JsonResponse
 from django.shortcuts import render
@@ -13,7 +12,6 @@ from .services.worker_supervisor import (
     clear_logs,
     get_logs,
     start,
-    status,
     status_all,
     stop,
 )

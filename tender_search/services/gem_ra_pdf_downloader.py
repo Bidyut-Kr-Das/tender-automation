@@ -8,93 +8,12 @@ from .gem_pdf_parser_ai import save_extraction_to_db
 from .gem_bid_results import find_gem_id_result
 from django.conf import settings
 
-
-def delay(ms: int) -> None:
-    time.sleep(ms / 1000)
-
-
-# def detect_chrome_path() -> str:
-#     candidates = [
-#         r"C:\Program Files\Google\Chrome\Application\chrome.exe",
-#         r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
-#         r"C:\Program Files\Chromium\Application\chrome.exe",
-#     ]
-#     for p in candidates:
-#         if os.path.exists(p):
-#             return p
-#     raise FileNotFoundError("Chrome not found")
-
-
-def detect_chrome_path() -> str:
-    # Prefer path provided through environment variable
-    chrome_path = settings.CHROME_PATH
-
-    if chrome_path:
-        if os.path.exists(chrome_path):
-            return chrome_path
-
-        raise FileNotFoundError(
-            f"Chrome executable not found at CHROME_PATH: {chrome_path}"
-        )
-
-    # Fallback for local Windows development
-    candidates = [
-        r"C:\Program Files\Google\Chrome\Application\chrome.exe",
-        r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
-        r"C:\Program Files\Chromium\Application\chrome.exe",
-    ]
-
-    for p in candidates:
-        if os.path.exists(p):
-            return p
-
-    raise FileNotFoundError(
-        "Chrome not found. Set the CHROME_PATH environment variable."
-    )
-
-def perform_search(page, gem_id: str, check_bid_ra_status: bool = False) -> None:
-    page.goto("https://bidplus.gem.gov.in/all-bids", wait_until="networkidle")
-    page.locator("#searchBid").fill(gem_id, timeout=20000)
-    delay(1000)
-
-    search_dropdown = page.locator("button.dropdown-toggle.searchtype")
-    if search_dropdown.count() > 0:
-        search_dropdown.click()
-        delay(500)
-        exact_option = page.locator("ul.dropdown-menu a, ul.dropdown-menu li").filter(
-            has_text="Exact"
-        ).first
-        if exact_option.count() > 0:
-            exact_option.click()
-    delay(1000)
-
-    if check_bid_ra_status:
-        checkbox = page.locator(
-            "label:has-text('BID/RA STATUS') input[type='checkbox']"
-        ).first
-        if checkbox.count() > 0 and not checkbox.is_checked():
-            checkbox.click()
-        delay(1000)
-
-    page.locator("#searchBidRA").click()
+from .browser import delay, detect_chrome_path
+from .gem_pdf_downloader import perform_search, wait_for_search_results as _wait_for_search_results
 
 
 def wait_for_search_results(page, gem_id: str, timeout: int = 15000) -> bool:
-    try:
-        page.locator("div.block_header").filter(has_text=gem_id).first.wait_for(
-            timeout=timeout, state="attached"
-        )
-        return True
-    except Exception:
-        body_text = page.locator("body").inner_text()
-        if "No data found" in body_text:
-            return False
-        start = time.time() * 1000
-        while (time.time() * 1000) - start < timeout:
-            if gem_id in page.locator("body").inner_text():
-                return True
-            delay(1000)
-        return False
+    return _wait_for_search_results(page, gem_id, timeout, selector="div.block_header")
 
 
 def _find_ra_link(page, gem_id: str):
@@ -238,15 +157,10 @@ def try_download_ra_via_click(page, link, gem_id: str, save_path: str) -> dict:
             doc_url = _extract_first_ra_doc_url(html)
             if doc_url:
                 print(f"  found first RA Document URL: {doc_url}")
-                response = new_page.request.get(doc_url)
-                if response.ok:
-                    body = response.body()
-                    if len(body) >= 100 and body.startswith(b"%PDF"):
-                        with open(save_path, "wb") as f:
-                            f.write(body)
-                        print(f"  RA PDF saved from schedules HTML -> {save_path}")
-                        new_page.close()
-                        return {"success": True, "pdfPath": save_path}
+                result = try_download_ra_direct(new_page, doc_url, save_path)
+                if result["success"]:
+                    new_page.close()
+                    return result
 
             result = _click_ra_document(new_page, save_path)
             new_page.close()
@@ -264,15 +178,10 @@ def try_download_ra_via_click(page, link, gem_id: str, save_path: str) -> dict:
                 return {"success": True, "pdfPath": save_path}
             except Exception:
                 try:
-                    response = new_page.request.get(current_url)
-                    if response.ok:
-                        body = response.body()
-                        if len(body) >= 100 and body.startswith(b"%PDF"):
-                            with open(save_path, "wb") as f:
-                                f.write(body)
-                            print(f"  RA PDF saved from response -> {save_path}")
-                            new_page.close()
-                            return {"success": True, "pdfPath": save_path}
+                    result = try_download_ra_direct(new_page, current_url, save_path)
+                    if result["success"]:
+                        new_page.close()
+                        return result
                 except Exception as e:
                     print(f"  failed to capture PDF from showradocumentPdf page: {e}")
 

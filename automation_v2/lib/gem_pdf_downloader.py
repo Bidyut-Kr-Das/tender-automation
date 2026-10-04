@@ -1,40 +1,10 @@
-"""Copied from tender_search/services/gem_pdf_downloader.py (detect_chrome_path, perform_search, wait_for_search_results, try_download, delay); DB code removed."""
+"""Copied from tender_search/services/gem_pdf_downloader.py (perform_search, wait_for_search_results, try_download); DB code removed.
+delay and detect_chrome_path come from browser; fetch.py reaches them through this module."""
 import os
 import time
 from urllib.parse import urljoin
-from django.conf import settings
 
-
-def delay(ms: int) -> None:
-    time.sleep(ms / 1000)
-
-
-def detect_chrome_path() -> str:
-    # Prefer path provided through environment variable
-    chrome_path = settings.CHROME_PATH
-
-    if chrome_path:
-        if os.path.exists(chrome_path):
-            return chrome_path
-
-        raise FileNotFoundError(
-            f"Chrome executable not found at CHROME_PATH: {chrome_path}"
-        )
-
-    # Fallback for local Windows development
-    candidates = [
-        r"C:\Program Files\Google\Chrome\Application\chrome.exe",
-        r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
-        r"C:\Program Files\Chromium\Application\chrome.exe",
-    ]
-
-    for p in candidates:
-        if os.path.exists(p):
-            return p
-
-    raise FileNotFoundError(
-        "Chrome not found. Set the CHROME_PATH environment variable."
-    )
+from .browser import delay, detect_chrome_path  # noqa: F401
 
 
 def perform_search(page, gem_id: str, check_bid_ra_status: bool = False) -> None:
@@ -64,9 +34,9 @@ def perform_search(page, gem_id: str, check_bid_ra_status: bool = False) -> None
     page.locator("#searchBidRA").click()
 
 
-def wait_for_search_results(page, gem_id: str, timeout: int = 15000) -> bool:
+def wait_for_search_results(page, gem_id: str, timeout: int = 15000, selector: str = "a.bid_no_hover") -> bool:
     try:
-        page.locator("a.bid_no_hover").filter(has_text=gem_id).wait_for(
+        page.locator(selector).filter(has_text=gem_id).first.wait_for(
             timeout=timeout, state="attached"
         )
         return True

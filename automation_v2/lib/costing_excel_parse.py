@@ -1,10 +1,12 @@
 """Copied from tender_search/services/costing_excel_parse.py (_is_drive_link, _extract_drive_file_id, _download_drive_file, _find_all_header_rows, _parse_table, _find_price_basis, _find_applicable_index); DB code removed."""
 import logging
-import os,json
+import os
 import re
 from datetime import datetime
 import requests
 from django.conf import settings
+
+from .boq_parser import _to_number
 logger = logging.getLogger(__name__)
 _DRIVE_FILE_ID_RE_1 = re.compile(r"/file/d/([^/?&#]+)")
 _DRIVE_FILE_ID_RE_2 = re.compile(r"[?&]id=([^&#]+)")
@@ -212,18 +214,6 @@ def _download_drive_file(file_id: str, dest_path: str) -> None:
         except OSError:
             pass
         raise
-
-
-def _to_number(val):
-    if val is None:
-        return None
-    if isinstance(val, (int, float)):
-        return float(val) if val == val else None
-    s = str(val).strip().replace(",", "").strip()
-    try:
-        return float(s)
-    except ValueError:
-        return None
 
 
 def _strip_pct(val):

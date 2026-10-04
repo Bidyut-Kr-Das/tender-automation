@@ -6,25 +6,12 @@ from playwright.sync_api import sync_playwright
 from django.conf import settings
 
 from .browser import detect_chrome_path
+from .tender_tiger import _tiger_login
 
 if hasattr(asyncio, "WindowsProactorEventLoopPolicy"):
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
 logger = logging.getLogger(__name__)
-
-
-def _tiger_login(page, email: str, password: str) -> bool:
-    print("[TigerResult] Navigating to login page...")
-    page.goto(
-        "https://www.tendertiger.com/User/Account?login",
-        wait_until="networkidle",
-        timeout=30000,
-    )
-    page.locator('input[name="Email"]').fill(email)
-    page.locator('input[name="Password"]').fill(password)
-    page.locator("#btnlogin").click()
-    page.wait_for_timeout(5000)
-    return "dashboard" in page.url.lower()
 
 
 def _click_result_tab(page) -> None:
