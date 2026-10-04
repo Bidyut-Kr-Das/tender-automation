@@ -101,19 +101,6 @@ def _save_to_db(gem_id: str, result: dict):
     print(f"  [DB] Saved {len(evaluations)} evaluations for {gem_id}")
 
 
-# def detect_chrome_path() -> str:
-#     candidates = [
-#         r"C:\Program Files\Google\Chrome\Application\chrome.exe",
-#         r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
-#         r"C:\Program Files\Chromium\Application\chrome.exe",
-#     ]
-#     for p in candidates:
-#         if os.path.exists(p):
-#             return p
-#     raise FileNotFoundError(
-#         "Chrome not found. Please install Chrome or set CHROME_PATH env variable."
-#     )
-
 def detect_chrome_path() -> str:
     # Prefer path provided through environment variable
     chrome_path = settings.CHROME_PATH
@@ -428,37 +415,6 @@ def parse_evaluation_table(page: Page) -> list[dict]:
             )
 
     return results
-
-
-def parse_price(price_str: str) -> float:
-    cleaned = re.sub(r"[^0-9.]", "", price_str)
-    try:
-        return float(cleaned)
-    except ValueError:
-        return 0.0
-
-
-def calculate_difference(evaluations: list[dict]) -> Optional[str]:
-    l1_row = None
-    target_row = None
-    for e in evaluations:
-        rank = (e.get("rank") or "").upper()
-        if rank in ("L1", "1"):
-            l1_row = e
-        if "LASER POWER & INFRA" in (e.get("sellerName") or "").upper():
-            target_row = e
-
-    if not l1_row or not target_row:
-        return None
-
-    l1_price = parse_price(l1_row.get("totalPrice") or "")
-    target_price = parse_price(target_row.get("totalPrice") or "")
-
-    if not l1_price or not target_price:
-        return None
-
-    diff = ((target_price - l1_price) / l1_price) * 100
-    return f"{diff:.2f}%"
 
 
 def process_tender(page: Page, gem_id: str, browser) -> dict:

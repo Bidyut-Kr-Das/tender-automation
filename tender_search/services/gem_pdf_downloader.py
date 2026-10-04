@@ -2,7 +2,6 @@ import os
 import time
 from urllib.parse import urljoin
 from playwright.sync_api import sync_playwright
-from .google_drive import upload_to_drive
 from .file_storage import file_storage
 from .gem_pdf_parser_ai import save_extraction_to_db
 from django.conf import settings
@@ -14,16 +13,6 @@ def delay(ms: int) -> None:
     time.sleep(ms / 1000)
 
 
-# def detect_chrome_path() -> str:
-#     candidates = [
-#         r"C:\Program Files\Google\Chrome\Application\chrome.exe",
-#         r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
-#         r"C:\Program Files\Chromium\Application\chrome.exe",
-#     ]
-#     for p in candidates:
-#         if os.path.exists(p):
-#             return p
-#     raise FileNotFoundError("Chrome not found")
 def detect_chrome_path() -> str:
     # Prefer path provided through environment variable
     chrome_path = settings.CHROME_PATH
@@ -126,106 +115,6 @@ def try_download(page, gem_id: str, download_dir: str) -> dict:
         f.write(body)
     print(f"  {gem_id}: PDF saved → {save_path} ({len(body)} bytes)")
     return {"success": True, "pdfPath": save_path}
-
-
-# def download_gem_pdf(gem_id: str, download_dir: str = r"D:\temp") -> dict:
-#     chrome_path = os.environ.get("CHROME_PATH") or detect_chrome_path()
-
-#     with sync_playwright() as pw:
-#         browser = pw.chromium.launch(
-#             executable_path=chrome_path,
-#             headless=False,
-#             args=[
-#                 "--disable-blink-features=AutomationControlled",
-#                 "--disable-features=ChromeWhatsNewUI",
-#             ],
-#         )
-#         page = browser.new_page()
-
-#         # Attempt 1: Search WITHOUT bid/ra (ongoing only)
-#         print(f"  {gem_id}: searching ongoing bids...")
-#         perform_search(page, gem_id, check_bid_ra_status=False)
-#         if not wait_for_search_results(page, gem_id):
-#             print(f"  {gem_id}: no data found in ongoing bids")
-#         else:
-#             result = try_download(page, gem_id, download_dir)
-#             if result["success"]:
-#                 print(f"  {gem_id}:  Downloading from ongoing bids uploaded to Drive...")
-                
-
-#                 print(f"  {gem_id}: running AI extraction...")
-#                 # ai_res = extract_pdf_data(pdf_path=result["pdfPath"], gem_id=gem_id)
-#                 drive_res = upload_to_drive(result["pdfPath"])
-#                 drive_url = drive_res.get("webViewLink", "")
-#                 result["driveLink"] = drive_url
-#                 save_extraction_to_db(referenceno=gem_id,
-#                                       file_tag="tenderDocument",
-#                                       file_url=drive_url,
-
-
-#                                       )
-
-#                 # if ai_res["success"]:
-#                 #     data = ai_res["data"]
-#                 #     size_text = "\n\n".join(
-#                 #         f"### {s['itemCategory']}\n{s['TechnicalSpecifications']}"
-#                 #         for s in data.get("size", [])
-#                 #     ) or None
-
-#                     # save_extraction_to_db(
-#                     #     referenceno=gem_id,
-#                     #     file_tag="tenderDocument",
-#                     #     file_url=drive_url,
-#                     #     pdf_path=result["pdfPath"],
-#                     #     item_category=data.get("itemCategory", ""),
-#                     #     total_quantity=data.get("totalQuantity", ""),
-#                     #     size=size_text,
-#                     #     reportings=data.get("reportings", []),
-#                     # )
-
-#                 print(f"  {gem_id}: downloaded from ongoing, skipping bid/ra")
-#                 return result
-#             print(f"  {gem_id}: ongoing download failed, trying bid/ra...")
-
-#         # Attempt 2: Search WITH bid/ra status
-#         print(f"  {gem_id}: searching with bid/ra status...")
-#         perform_search(page, gem_id, check_bid_ra_status=True)
-#         if wait_for_search_results(page, gem_id):
-#             result= try_download(page, gem_id, download_dir)
-#             if result["success"]:
-                
-
-#                 # ai_res = extract_pdf_data(pdf_path=result["pdfPath"], gem_id=gem_id)
-#                 drive_res = upload_to_drive(result["pdfPath"])
-#                 drive_url = drive_res.get("webViewLink", "")
-#                 result["driveLink"] = drive_url
-#                 save_extraction_to_db(referenceno=gem_id,
-#                                                       file_tag="tenderDocument",
-#                                                       file_url=drive_url,
-                
-                
-#                                                       )
-
-#                 # if ai_res["success"]:
-#                 #     data = ai_res["data"]
-#                 #     size_text = "\n\n".join(
-#                 #         f"### {s['itemCategory']}\n{s['TechnicalSpecifications']}"
-#                 #         for s in data.get("size", [])
-#                 #     ) or None
-
-#                 #     save_extraction_to_db(
-#                 #         referenceno=gem_id,
-#                 #         file_tag="tenderDocument",
-#                 #         file_url=drive_url,
-#                 #         pdf_path=result["pdfPath"],
-#                 #         item_category=data.get("itemCategory", ""),
-#                 #         total_quantity=data.get("totalQuantity", ""),
-#                 #         size=size_text,
-#                 #         reportings=data.get("reportings", []),
-#                 #     )
-#             return result
-
-#         return {"success": False, "error": "Not found in ongoing or bid/ra"}
 
 
 

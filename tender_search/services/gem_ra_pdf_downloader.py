@@ -3,7 +3,6 @@ import re
 import time
 from urllib.parse import urljoin
 from playwright.sync_api import sync_playwright
-from .google_drive import upload_to_drive
 from .file_storage import file_storage
 from .gem_pdf_parser_ai import save_extraction_to_db
 from .gem_bid_results import find_gem_id_result

@@ -6,19 +6,8 @@ from django.conf import settings
 
 from .browser import detect_chrome_path
 from .file_storage import file_storage
-from .google_drive import upload_to_drive
 from .zip_utils import extract_and_upload
 
-
-import asyncio
-
-print("Policy:", asyncio.get_event_loop_policy())
-
-try:
-    loop = asyncio.get_event_loop()
-    print("Loop:", type(loop))
-except Exception as e:
-    print("No loop:", e)
 
 def login_tender247(email: str, password: str, tender_id: str = "", drive_folder_id: str | None = None) -> dict:
     drive_result = None

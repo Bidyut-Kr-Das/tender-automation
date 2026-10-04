@@ -35,17 +35,6 @@ def _publish_ingestion(ch, reference_no: str, files: list[dict]):
         logger.warning("agent:ingestion publish failed for %s: %s", reference_no, e)
 
 
-def _s3_to_ingestion_file(s3: dict | None) -> dict | None:
-    url = (s3 or {}).get("url") or ""
-    if not url:
-        return None
-    key = (s3 or {}).get("key") or url
-    filename = key.split("/")[-1] or Path(url).name or "file"
-    ext = Path(filename).suffix.lower()
-    is_boq = "boq" in filename.lower() and ext in (".xls", ".xlsx", ".xlsm", ".xlsb")
-    tag = TENDER_FILE_TYPES["BOQ_FILE"] if is_boq else TENDER_FILE_TYPES["TENDER_DOCUMENT"]
-    return {"fileName": filename, "fileUrl": url, "fileTag": tag, "externalDocumentId": None}
-
 if hasattr(asyncio, "WindowsProactorEventLoopPolicy"):
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 

@@ -6,7 +6,6 @@ from django.conf import settings
 
 from .browser import detect_chrome_path
 from .file_storage import file_storage
-from .google_drive import upload_to_drive
 from .zip_utils import extract_and_upload
 
 logger = logging.getLogger(__name__)

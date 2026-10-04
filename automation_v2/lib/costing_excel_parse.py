@@ -267,17 +267,12 @@ def _is_non_material_header(header_lower):
 
 def _find_all_header_rows(sheet):
     headers = []
-    rcount = 0
-    # print(sheet)
     for row in sheet.iter_rows():
-        # print(row)
         vals = [str(c.value).strip() if c.value else "" for c in row]
-        # print(f"count: {rcount+1} ----- {vals}")
         has_docket = any("docket" in v.lower() for v in vals)
         has_erp = any("propose" in v.lower() and "erp" in v.lower() for v in vals)
         if has_docket and has_erp:
             headers.append(row[0].row)
-        rcount+=1
     return headers
 
 
@@ -484,18 +479,15 @@ def _parse_table(ws, header_row_num, end_row):
         if total_price_val is not None:
             total_price_val = round(total_price_val, 2)
 
-        if cva_cols:
-            parts = []
-            for k in ("mfg", "intt", "insp", "prof", "ttr"):
-                col = cva_cols.get(k)
-                if col is None:
-                    continue
-                raw = _cell(row_obj, col)
-                if _has_value(raw):
-                    parts.append(_strip_pct(raw))
-            cva_str = "@".join(parts)
-        else:
-            cva_str = ""
+        parts = []
+        for k in ("mfg", "intt", "insp", "prof", "ttr"):
+            col = cva_cols.get(k)
+            if col is None:
+                continue
+            raw = _cell(row_obj, col)
+            if _has_value(raw):
+                parts.append(_strip_pct(raw))
+        cva_str = "@".join(parts)
 
         rows.append({
             "item_code": item_code,

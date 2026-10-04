@@ -22,7 +22,7 @@ def _tiger_login(page, email: str, password: str) -> bool:
     return "dashboard" in page.url.lower()
 
 
-def login_tiger(email: str, password: str, reference_no: str, drive_folder_id=None) -> dict:
+def login_tiger(email: str, password: str, reference_no: str) -> dict:
     # ponytail: single browser per call, re-login each task — add persistent context if throughput matters
     chrome_path = detect_chrome_path()
     zip_path = None
@@ -39,11 +39,7 @@ def login_tiger(email: str, password: str, reference_no: str, drive_folder_id=No
                 detail_page = _search_by_reference(page, reference_no)
                 zip_path = _download_docs(detail_page, reference_no)
 
-            result_data = {
-                "success": success,
-                "url": page.url,
-                "title": page.title(),
-            }
+            result_data = {"success": success}
         except Exception as e:
             logger.exception("[Tiger] failed for %s: %s", reference_no, e)
             print(f"[Tiger] ERROR: {e}")
@@ -58,12 +54,6 @@ def login_tiger(email: str, password: str, reference_no: str, drive_folder_id=No
             print(f"[Tiger] Extract/upload failed: {e}")
             s3_list = []
         result_data["s3_list"] = s3_list
-        result_data["s3_urls"] = [x["url"] for x in s3_list]
-        result_data["s3"] = s3_list[0] if s3_list else {}
-        result_data["s3_url"] = result_data["s3_urls"][0] if result_data["s3_urls"] else ""
-        result_data["drive_url"] = ""
-        result_data["drive"] = {}
-        result_data["file_count"] = len(s3_list)
 
     return result_data
 
@@ -134,40 +124,8 @@ def _search_by_reference(page, reference_no: str):
             search_btn = page.locator("a#advancesearchchk.search_btn.old-Search-btn:has-text('Search')").first
         search_btn.wait_for(state="visible", timeout=15000)
         search_btn.click()
-    else:
-        # already clicked via candidate loop
-        pass
     page.wait_for_timeout(3000)
     page.wait_for_load_state("networkidle", timeout=30000)
-    # ponytail: old filter logic commented out — no filter click, homepage redirect is new entry point
-    # filter_btn = page.locator("#new-filter-btn-tt")
-    # filter_btn.wait_for(state="visible", timeout=10000)
-    # if not filter_btn.is_visible():
-    #     print("[Tiger] Filter button not visible")
-    # else:
-    #     filter_btn.click()
-    #     page.wait_for_timeout(1000)
-    # tid_input = page.locator("#txt_W_Tid")
-    # if not tid_input.is_visible():
-    #     print("[Tiger] Tid input not visible, retrying filter...")
-    #     if filter_btn.count() > 0:
-    #         filter_btn.click()
-    #         page.wait_for_timeout(1000)
-    # tid_input.wait_for(state="visible", timeout=15000)
-    # print(f"[Tiger] Filling reference: {reference_no}")
-    # tid_input.fill(reference_no)
-    # page.wait_for_timeout(500)
-    # print("[Tiger] Clicking SEARCH...")
-    # search_btn = page.locator("#new-filter-view-tt .filter-footer button")
-    # search_btn.wait_for(state="visible", timeout=10000)
-    # search_btn.click()
-    # loader = page.locator("#tender-loader")
-    # try:
-    #     loader.wait_for(state="hidden", timeout=60000)
-    # except Exception:
-    #     pass
-    # page.wait_for_timeout(2000)
-    # return _open_matching_tender(page, reference_no)
     return _open_matching_tender(page, reference_no)
 
 

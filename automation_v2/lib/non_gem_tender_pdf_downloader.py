@@ -6,8 +6,7 @@ from .browser import detect_chrome_path
 from .zip_utils import extract_and_upload
 
 
-def login_tender247(email: str, password: str, tender_id: str = "", drive_folder_id: str | None = None) -> dict:
-    drive_result = None
+def login_tender247(email: str, password: str, tender_id: str = "") -> dict:
     file_path = None
     result_data = {}
     chrome_path = detect_chrome_path()
@@ -109,11 +108,7 @@ def login_tender247(email: str, password: str, tender_id: str = "", drive_folder
 
             success = "Sign Up" not in (page.locator("button:has-text('Sign Up')").inner_text() if page.locator("button:has-text('Sign Up')").count() > 0 else "")
 
-            result_data = {
-                "success": success,
-                "url": page.url,
-                "title": page.title(),
-            }
+            result_data = {"success": success}
         except Exception as e:
             result_data = {"success": False, "error": str(e)}
         finally:
@@ -126,11 +121,6 @@ def login_tender247(email: str, password: str, tender_id: str = "", drive_folder
             print(f"[Tender247] Extract/upload failed: {e}")
             s3_list = []
         result_data["s3_list"] = s3_list
-        result_data["s3"] = s3_list[0] if s3_list else {}
-        result_data["s3_url"] = s3_list[0]["url"] if s3_list else ""
-        result_data["drive"] = {}
-        result_data["drive_url"] = ""
-        result_data["file_count"] = len(s3_list)
         if s3_list:
             print(f"[Tender247] Uploaded {len(s3_list)} files for {tender_id}")
 

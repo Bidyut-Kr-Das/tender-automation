@@ -330,11 +330,6 @@ def save_boq_from_direct(reference_no: str, items: list[str]) -> dict:
     return _save_boq_core(reference_no, items)
 
 
-def save_boq_to_db(reference_no: str, items: list[str]) -> dict:
-    # backward compat alias
-    return _save_boq_core(reference_no, items)
-
-
 def _save_failure_to_db(reference_no: str, error_msg: str):
     try:
         tender = TenderMerged.objects.filter(referenceno=reference_no).first()
