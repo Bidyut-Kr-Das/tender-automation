@@ -1,4 +1,4 @@
-"""Copied from tender_search/services/file_storage.py (file_storage); DB code removed."""
+"""No DB code; used by both automation_v2 and tender_search."""
 import boto3
 from pathlib import Path
 from urllib.parse import quote

@@ -20,7 +20,7 @@ COPY . .
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen
 
-# Only the Drive v3 descriptor is used (services/google_drive.py, services/costing_excel_parse.py).
+# Only the Drive v3 descriptor is used (automation_v2/lib/google_drive.py, automation_v2/lib/costing_excel_parse.py).
 # The other ~580 bundled API descriptors are ~99MB of dead weight.
 RUN find /app/.venv -path "*/googleapiclient/discovery_cache/documents/*" \
     ! -name "drive.*.json" -delete

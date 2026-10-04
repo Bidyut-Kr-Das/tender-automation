@@ -7,7 +7,7 @@ from urllib.parse import urljoin
 from django.conf import settings
 from playwright.sync_api import sync_playwright, Page, TimeoutError as PwTimeoutError
 
-from .browser import delay, detect_chrome_path
+from automation_v2.lib.browser import delay, detect_chrome_path
 
 
 def _parse_price(val):

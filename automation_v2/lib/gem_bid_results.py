@@ -1,4 +1,4 @@
-"""Copied from tender_search/services/gem_bid_results.py (find_gem_id_result); DB code removed."""
+"""No DB code; used by both automation_v2 and tender_search."""
 import re
 from typing import Optional
 from playwright.sync_api import Page

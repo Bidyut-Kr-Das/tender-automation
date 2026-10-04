@@ -1,4 +1,4 @@
-"""Copied from tender_search/services/tender_tiger.py (login_tiger); DB code removed."""
+"""No DB code; used by both automation_v2 and tender_search."""
 import logging
 from pathlib import Path
 from playwright.sync_api import sync_playwright

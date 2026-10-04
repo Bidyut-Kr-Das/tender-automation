@@ -1,4 +1,4 @@
-"""Copied from tender_search/services/boq_parser.py (extract_zip, find_boq_file, parse_boq, _is_direct_xlsx_zip); DB code removed."""
+"""No DB code; used by both automation_v2 and tender_search."""
 import csv
 import os
 import re

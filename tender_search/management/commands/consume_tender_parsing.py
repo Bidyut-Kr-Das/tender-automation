@@ -14,7 +14,11 @@ from tender_search.services.pdf_parser import parse_and_save_gem_pdf
 from tender_search.services.costing_excel_parse import parse_costing_excel
 from tender_search.services.boq_parser import process_boq
 from tender_search.services.gem_ra_pdf_parser import process_ra_document
-from tender_search.services.downloads import download_from_drive, download_from_url, extract_drive_file_id
+from automation_v2.lib.downloads import (
+    _download_from_drive as download_from_drive,
+    _download_from_url as download_from_url,
+    _extract_drive_file_id as extract_drive_file_id,
+)
 
 logger = logging.getLogger(__name__)
 

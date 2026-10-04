@@ -1,4 +1,4 @@
-"""Copied from tender_search/management/commands/consume_tender_parsing.py (_download_from_drive, _download_from_url, _extract_drive_file_id, _resolve_network_path); DB code removed."""
+"""No DB code; used by both automation_v2 and tender_search."""
 import os
 import re
 import requests

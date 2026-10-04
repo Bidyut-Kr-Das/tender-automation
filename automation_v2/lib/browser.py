@@ -1,4 +1,4 @@
-"""Copied from tender_search/services/browser.py (delay, detect_chrome_path); DB code removed."""
+"""No DB code; used by both automation_v2 and tender_search."""
 import os
 import time
 from django.conf import settings

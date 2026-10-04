@@ -1,4 +1,4 @@
-"""Copied from tender_search/services/costing_excel_parse.py (_is_drive_link, _extract_drive_file_id, _download_drive_file, _find_all_header_rows, _parse_table, _find_price_basis, _find_applicable_index); DB code removed."""
+"""No DB code; used by both automation_v2 and tender_search."""
 import logging
 import os
 import re

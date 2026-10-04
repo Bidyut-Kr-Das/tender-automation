@@ -1,4 +1,4 @@
-"""Copied from tender_search/services/gem_ra_pdf_downloader.py (try_download_ra); DB code removed.
+"""No DB code; used by both automation_v2 and tender_search.
 Search helpers come from gem_pdf_downloader; fetch.py reaches them through this module."""
 import os
 import re

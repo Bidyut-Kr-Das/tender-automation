@@ -13,8 +13,8 @@ from tender_search.queue_types import (
     RAGemDownloadTask,
     tender_tasks_adapter,
 )
-from tender_search.services.non_gem_tender_pdf_downloader import login_tender247
-from tender_search.services.tender_tiger import login_tiger
+from automation_v2.lib.non_gem_tender_pdf_downloader import login_tender247
+from automation_v2.lib.tender_tiger import login_tiger
 from tender_search.models import TenderMerged, TenderFiles
 from tender_search.services.gem_pdf_downloader import download_gem_pdf
 from tender_search.services.gem_ra_pdf_downloader import download_ra_pdf
@@ -94,18 +94,17 @@ def callback(ch, method, properties, body):
             ch.basic_ack(delivery_tag=method.delivery_tag)
         elif isinstance(payload, NonGemDownloadTask):
             reference_no = payload.referenceNo or payload.tenderId
-            drive_folder_id = settings.GOOGLE_DRIVE_FOLDER_ID or None
             email = settings.TENDER247_EMAIL
             password = settings.TENDER247_PASSWORD
             if not email or not password:
                 raise ValueError("TENDER247_EMAIL and TENDER247_PASSWORD must be configured")
 
             asyncio.set_event_loop(asyncio.new_event_loop())
-            result = login_tender247(email, password, reference_no, drive_folder_id)
+            result = login_tender247(email, password, reference_no)
 
             if result.get("success"):
                 # ponytail: per-file S3 via zip_utils, s3_list contains individual docs
-                s3_list = result.get("s3_list") or ([result.get("s3")] if result.get("s3") else [])
+                s3_list = result.get("s3_list") or []
                 if not s3_list:
                     logger.warning("Tender247 success but no files for %s", reference_no)
                 tender_merged = TenderMerged.objects.filter(referenceno=reference_no).first()
@@ -151,10 +150,10 @@ def callback(ch, method, properties, body):
             else:
                 tiger_email = settings.TENDER_TIGER_EMAIL
                 tiger_password = settings.TENDER_TIGER_PASSWORD
-                tiger_result = login_tiger(tiger_email, tiger_password, reference_no, drive_folder_id)
+                tiger_result = login_tiger(tiger_email, tiger_password, reference_no)
                 if tiger_result.get("success"):
                                 # ponytail: recursive zip extract — s3_list contains individual files, no zip
-                                s3_list = tiger_result.get("s3_list") or ([tiger_result.get("s3")] if tiger_result.get("s3") else [])
+                                s3_list = tiger_result.get("s3_list") or []
                                 if not s3_list:
                                     logger.warning("Tiger success but no files extracted for %s", reference_no)
                                 tender_merged = TenderMerged.objects.filter(referenceno=reference_no).first()

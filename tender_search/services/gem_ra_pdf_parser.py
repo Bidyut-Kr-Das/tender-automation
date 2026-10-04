@@ -1,16 +1,20 @@
 import os
-import re
 import tempfile
 import logging
 from datetime import datetime
 
-import pdfplumber
 from django.conf import settings
 
-from .downloads import download_from_drive, download_from_url, extract_drive_file_id
+from automation_v2.lib.downloads import (
+    _download_from_drive as download_from_drive,
+    _download_from_url as download_from_url,
+    _extract_drive_file_id as extract_drive_file_id,
+)
+from automation_v2.lib.gem_ra_pdf_parser import (  # shared with v2
+    parse_ra_document,
+)
 
 logger = logging.getLogger(__name__)
-
 
 
 def _save_to_db(gemid: str, result: dict):
@@ -40,29 +44,6 @@ def _save_to_db(gemid: str, result: dict):
 
     except Exception as e:
         logger.error("Error saving RA dates to DB for %s: %s", gemid, e)
-
-def parse_ra_document(pdf_path: str) -> dict:
-    start_date = None
-    end_date = None
-
-    with pdfplumber.open(pdf_path) as pdf:
-        for page in pdf.pages:
-            text = page.extract_text() or ""
-
-            if start_date is None:
-                m = re.search(r"RA\s+Start\s+Date/Time\s*[:]?\s*([\d-]+\s+[\d:]+)", text)
-                if m:
-                    start_date = m.group(1).strip()
-
-            if end_date is None:
-                m = re.search(r"RA\s+End\s+Date/Time\s*[:]?\s*([\d-]+\s+[\d:]+)", text)
-                if m:
-                    end_date = m.group(1).strip()
-
-            if start_date is not None and end_date is not None:
-                break
-
-    return {"start_date": start_date, "end_date": end_date}
 
 
 def process_ra_document(reference_no: str, drive_link: str) -> dict:

@@ -1,4 +1,4 @@
-"""Copied from tender_search/services/zip_utils.py (extract_and_upload); DB code removed."""
+"""No DB code; used by both automation_v2 and tender_search."""
 import shutil
 import zipfile
 from pathlib import Path

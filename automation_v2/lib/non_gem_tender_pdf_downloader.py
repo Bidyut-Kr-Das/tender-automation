@@ -1,4 +1,4 @@
-"""Copied from tender_search/services/non_gem_tender_pdf_downloader.py (login_tender247); DB code removed."""
+"""No DB code; used by both automation_v2 and tender_search."""
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 from django.conf import settings

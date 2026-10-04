@@ -1,88 +1,15 @@
 import os
-import time
-from urllib.parse import urljoin
 from playwright.sync_api import sync_playwright
-from .file_storage import file_storage
+from automation_v2.lib.file_storage import file_storage
 from .gem_pdf_parser_ai import save_extraction_to_db
 from django.conf import settings
 
-from .browser import delay, detect_chrome_path
-
-
-def perform_search(page, gem_id: str, check_bid_ra_status: bool = False) -> None:
-    page.goto("https://bidplus.gem.gov.in/all-bids", wait_until="networkidle")
-    page.locator("#searchBid").fill(gem_id, timeout=20000)
-    delay(1000)
-
-    search_dropdown = page.locator("button.dropdown-toggle.searchtype")
-    if search_dropdown.count() > 0:
-        search_dropdown.click()
-        delay(500)
-        exact_option = page.locator("ul.dropdown-menu a, ul.dropdown-menu li").filter(
-            has_text="Exact"
-        ).first
-        if exact_option.count() > 0:
-            exact_option.click()
-    delay(1000)
-
-    if check_bid_ra_status:
-        checkbox = page.locator(
-            "label:has-text('BID/RA STATUS') input[type='checkbox']"
-        ).first
-        if checkbox.count() > 0 and not checkbox.is_checked():
-            checkbox.click()
-        delay(1000)
-
-    page.locator("#searchBidRA").click()
-
-
-def wait_for_search_results(page, gem_id: str, timeout: int = 15000, selector: str = "a.bid_no_hover") -> bool:
-    try:
-        page.locator(selector).filter(has_text=gem_id).first.wait_for(
-            timeout=timeout, state="attached"
-        )
-        return True
-    except Exception:
-        body_text = page.locator("body").inner_text()
-        if "No data found" in body_text:
-            return False
-        start = time.time() * 1000
-        while (time.time() * 1000) - start < timeout:
-            if gem_id in page.locator("body").inner_text():
-                return True
-            delay(1000)
-        return False
-
-
-def try_download(page, gem_id: str, download_dir: str) -> dict:
-    delay(2000)
-    link = page.locator("a.bid_no_hover").filter(has_text=gem_id).first
-    if link.count() == 0:
-        return {"success": False, "error": "Bid link not found"}
-
-    href = link.get_attribute("href")
-    if not href:
-        return {"success": False, "error": "No href on bid link"}
-
-    full_url = urljoin("https://bidplus.gem.gov.in", href)
-    safe_name = gem_id.replace("/", "-")
-    os.makedirs(download_dir, exist_ok=True)
-    timestamp = time.strftime("%Y%m%d_%H%M%S")
-    save_path = os.path.join(download_dir, f"{safe_name}_{timestamp}.pdf")
-
-    print(f"  {gem_id}: downloading from {full_url}")
-    response = page.request.get(full_url)
-    if not response.ok:
-        return {"success": False, "error": f"HTTP {response.status}"}
-
-    body = response.body()
-    if len(body) < 100:
-        return {"success": False, "error": f"File too small ({len(body)} bytes)"}
-
-    with open(save_path, "wb") as f:
-        f.write(body)
-    print(f"  {gem_id}: PDF saved → {save_path} ({len(body)} bytes)")
-    return {"success": True, "pdfPath": save_path}
+from automation_v2.lib.browser import detect_chrome_path
+from automation_v2.lib.gem_pdf_downloader import (  # shared with v2
+    perform_search,
+    wait_for_search_results,
+    try_download,
+)
 
 
 def download_gem_pdf(gem_id: str, download_dir: str = r"D:\temp") -> dict:

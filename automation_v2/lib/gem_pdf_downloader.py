@@ -1,4 +1,4 @@
-"""Copied from tender_search/services/gem_pdf_downloader.py (perform_search, wait_for_search_results, try_download); DB code removed.
+"""No DB code; used by both automation_v2 and tender_search.
 delay and detect_chrome_path come from browser; fetch.py reaches them through this module."""
 import os
 import time
