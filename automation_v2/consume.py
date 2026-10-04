@@ -31,8 +31,11 @@ def handle(ch, method, body: bytes, base: str, adapter, handlers: dict) -> None:
         logger.exception("Undecodable message dropped: %r", body[:200])
         ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
         return
+    ids = {"type": raw.get("type"), "referenceNo": raw.get("referenceNo")}
+    if base == "file.parsed":
+        ids["file_link"] = raw.get("file_link")  # echoed so receivers can match the event to the file they sent
     try:
-        with job_events(base, client_id_from(raw), type=raw.get("type"), referenceNo=raw.get("referenceNo")) as outcome:
+        with job_events(base, client_id_from(raw), **ids) as outcome:
             job = adapter.validate_python(raw)
             logger.info("Job start type=%s referenceNo=%s", job.type, job.referenceNo)
             outcome.succeed(handlers[job.type](job))
