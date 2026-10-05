@@ -1,39 +1,7 @@
-"""Copied from tender_search/services/gem_bid_results.py (find_gem_id_result); DB code removed."""
+"""No DB code; used by both automation_v2 and tender_search."""
 import re
-from typing import Callable, Optional
-from playwright.sync_api import sync_playwright, Page, TimeoutError as PwTimeoutError
-
-
-def _has_view_bid_results_button(page: Page) -> bool:
-    patterns = re.compile(
-        r"VIEW\s+BID\s+RESULTS|VIEW\s+BID|VIEW\s+RESULT|BID\s+RESULTS",
-        re.IGNORECASE,
-    )
-
-    for sel in [
-        "a",
-        "button",
-        'input[type="button"]',
-        'input[type="submit"]',
-        '[role="button"]',
-        "[onclick]",
-    ]:
-        if page.locator(sel).filter(has_text=patterns).count() > 0:
-            return True
-
-    non_span = page.locator("*:not(span)").filter(
-        has_text=re.compile(r"VIEW\s+BID\s+RESULTS", re.IGNORECASE)
-    )
-    if non_span.count() > 0:
-        return True
-
-    onclick_view = page.locator("[onclick]").filter(
-        has_text=re.compile(r"\bVIEW\b", re.IGNORECASE)
-    )
-    if onclick_view.count() > 0:
-        return True
-
-    return False
+from typing import Optional
+from playwright.sync_api import Page
 
 
 def find_gem_id_result(page: Page, gem_id: str) -> Optional[dict]:
@@ -48,7 +16,6 @@ def find_gem_id_result(page: Page, gem_id: str) -> Optional[dict]:
             )
             return {
                 "bidStatus": status_match.group(1).strip() if status_match else None,
-                "hasViewBidResults": _has_view_bid_results_button(page),
             }
         return None
 
@@ -81,5 +48,4 @@ def find_gem_id_result(page: Page, gem_id: str) -> Optional[dict]:
 
     return {
         "bidStatus": bid_status,
-        "hasViewBidResults": _has_view_bid_results_button(page),
     }

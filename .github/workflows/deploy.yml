@@ -75,36 +75,19 @@ jobs:
  
           docker compose pull
 
-          docker compose up -d --scale automation-v2-tasks=1 --scale automation-v2-parsing=1 automation-v2-tasks automation-v2-parsing automation-v2-api
-          # docker compose up -d --scale automation-worker=2 --scale parsing-worker=1  automation-worker parsing-worker
+          # Only the v2 services run; --remove-orphans stops containers of services commented out in docker-compose.yml
+          docker compose up -d --remove-orphans --scale automation-v2-tasks=2 automation-v2-tasks automation-v2-parsing automation-v2-api
 
-          # Cleanup old automation-worker images
+          # Cleanup old django-worker images (keep latest and previous)
           $repo = "ghcr.io/laser-power-infra/django-worker"
           $allImages = docker images --filter "reference=$repo" --format "{{.ID}}" | Select-Object -Unique
           $oldImages = $allImages | Select-Object -Skip 2
 
           if ($oldImages) {
-              Write-Host "Cleaning up old automation-worker images: $oldImages"
+              Write-Host "Cleaning up old django-worker images: $oldImages"
               $oldImages | ForEach-Object { docker rmi -f $_ }
           } else {
-              Write-Host "No old automation-worker images to prune. Latest and previous images preserved."
-          }
-
-          # Cleanup old parsing-worker images
-          $repo = "ghcr.io/laser-power-infra/django-worker"
-          $allImages = docker images --filter "reference=$repo" --format "{{.ID}}" | Select-Object -Unique
-          $oldImages = $allImages | Select-Object -Skip 2
-
-          if ($oldImages) {
-              Write-Host "Cleaning up old parsing-worker images: $oldImages"
-              $oldImages | ForEach-Object { docker rmi -f $_ }
-          } else {
-              Write-Host "No old parsing-worker images to prune. Latest and previous images preserved."
+              Write-Host "No old django-worker images to prune. Latest and previous images preserved."
           }
 
           docker image prune -f
-
-
-        
-
-        

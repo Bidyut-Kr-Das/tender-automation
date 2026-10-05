@@ -134,6 +134,7 @@ These names are fixed. Match on them exactly.
 |---|---|---|
 | `data.type` | The job `type` from your payload | Same. It is present even if validation failed. |
 | `data.referenceNo` | The job `referenceNo` from your payload | Same |
+| `data.file_link` | `file.parsed_*` only: the job `file_link` from your payload, or `null` if it had none (e.g. a `network` costing job). Not present on `file.fetched_*`. | Same |
 | `data.result` | The result object for that job type (section 5 or 6) | `null` |
 | `data.error` | `null` | `"<ErrorType>: <message>"` |
 
@@ -323,6 +324,7 @@ The shape of `result` depends on `data.type`.
   "data": {
     "type": "GEM_PDF_PARSING",
     "referenceNo": "GEM/2026/B/1234567",
+    "file_link": "https://s3.example.com/tenders/GEM_2026_B_1234567%2FGEM-2026-B-1234567_20260930_101500.pdf",
     "result": {
       "Total_Quantity": "150",
       "Item_Category_String": "LT XLPE Cable 3.5C x 300 sqmm, LT XLPE Cable 4C x 16 sqmm",
@@ -378,6 +380,7 @@ A date that is missing from the PDF is `null`, and the event is still `_success`
   "data": {
     "type": "RA_GEM_PDF_PARSING",
     "referenceNo": "GEM/2026/B/1234567",
+    "file_link": "https://s3.example.com/tenders/GEM_2026_B_1234567%2FGEM-2026-B-1234567_RA_20260930_102005.pdf",
     "result": {"start_date": "20-09-2026 11:00:00", "end_date": "20-09-2026 13:00:00"},
     "error": null
   }
@@ -406,6 +409,7 @@ Accepted inputs:
   "data": {
     "type": "NON_GEM_BOQ_PARSING",
     "referenceNo": "64265344B",
+    "file_link": "https://s3.example.com/tenders/64265344B%2Fdocs%2FBOQ_Cables.xlsx",
     "result": {
       "boq_file": "BOQ_Cables.xlsx",
       "items": [
@@ -442,6 +446,7 @@ In v2 this webhook replaces both legacy outputs: the database save and the `lase
   "data": {
     "type": "COSTING_ATTACHMENT_PARSING",
     "referenceNo": "GEM/2026/B/1234567",
+    "file_link": null,
     "result": {
       "tables": [
         {
@@ -479,6 +484,7 @@ In v2 this webhook replaces both legacy outputs: the database save and the `lase
   "data": {
     "type": "RA_GEM_PDF_PARSING",
     "referenceNo": "GEM/2026/B/1234567",
+    "file_link": "https://s3.example.com/tenders/missing.pdf",
     "result": null,
     "error": "HTTPError: 404 Client Error: Not Found for url: https://s3.example.com/tenders/missing.pdf"
   }

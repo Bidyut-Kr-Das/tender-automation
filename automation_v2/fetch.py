@@ -92,20 +92,18 @@ def _non_gem_tag(name: str) -> str:
 
 def fetch_non_gem(job) -> dict:
     ref = job.referenceNo
-    folder = settings.GOOGLE_DRIVE_FOLDER_ID or None
     if not settings.TENDER247_EMAIL or not settings.TENDER247_PASSWORD:
         raise ValueError("TENDER247_EMAIL and TENDER247_PASSWORD must be configured")
 
     asyncio.set_event_loop(asyncio.new_event_loop())
-    result, source = login_tender247(settings.TENDER247_EMAIL, settings.TENDER247_PASSWORD, ref, folder), "tender247"
+    result, source = login_tender247(settings.TENDER247_EMAIL, settings.TENDER247_PASSWORD, ref), "tender247"
     if not result.get("success"):
         logger.info("%s: tender247 failed (%s), trying tiger", ref, result.get("error"))
-        result, source = login_tiger(settings.TENDER_TIGER_EMAIL, settings.TENDER_TIGER_PASSWORD, ref, folder), "tendertiger"
+        result, source = login_tiger(settings.TENDER_TIGER_EMAIL, settings.TENDER_TIGER_PASSWORD, ref), "tendertiger"
     if not result.get("success"):
         raise FetchFailed(f"tender247 and tendertiger both failed: {result.get('error') or 'no result'}")
 
-    s3_list = result.get("s3_list") or ([result["s3"]] if result.get("s3") else [])
-    files = [_file(s3, _non_gem_tag(s3["key"]), source) for s3 in s3_list if s3 and s3.get("url")]
+    files = [_file(s3, _non_gem_tag(s3["key"]), source) for s3 in result.get("s3_list") or [] if s3.get("url")]
     if not files:
         raise FetchFailed(f"{source} returned no files")
     return {"files": files, "bidStatus": None}

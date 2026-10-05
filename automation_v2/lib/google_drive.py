@@ -1,4 +1,4 @@
-"""Copied from tender_search/services/google_drive.py (_get_authenticated_service); DB code removed."""
+"""No DB code; used by both automation_v2 and tender_search."""
 import os
 import logging
 from google.oauth2.credentials import Credentials

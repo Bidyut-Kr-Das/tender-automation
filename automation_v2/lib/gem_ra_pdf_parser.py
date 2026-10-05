@@ -1,4 +1,4 @@
-"""Copied from tender_search/services/gem_ra_pdf_parser.py (parse_ra_document); DB code removed."""
+"""No DB code; used by both automation_v2 and tender_search."""
 import re
 import pdfplumber
 

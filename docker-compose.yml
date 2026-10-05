@@ -1,64 +1,65 @@
 services:
+  # Running: automation-v2-api, automation-v2-tasks (x2), automation-v2-parsing. Others disabled.
 
-  automation-worker:
-    # build:
-    #   context: .
-    #   dockerfile: Dockerfile
-    # image: django-worker:latest
-    image: ghcr.io/laser-power-infra/django-worker:${APP_VERSION}
-    # container_name:   automation-worker
-    command: python manage.py consume_tender_tasks
-    restart: unless-stopped
-    env_file:
-      - .env.production
-    networks:
-      - infra
+  # automation-worker:
+  #   # build:
+  #   #   context: .
+  #   #   dockerfile: Dockerfile
+  #   # image: django-worker:latest
+  #   image: ghcr.io/laser-power-infra/django-worker:${APP_VERSION}
+  #   # container_name:   automation-worker
+  #   command: python manage.py consume_tender_tasks
+  #   restart: unless-stopped
+  #   env_file:
+  #     - .env.production
+  #   networks:
+  #     - infra
 
-  parsing-worker:
-    # image: django-worker:latest
+  # parsing-worker:
+  #   # image: django-worker:latest
 
-    image: ghcr.io/laser-power-infra/django-worker:${APP_VERSION:-latest}
-    # container_name: parsing-worker
-    command: python manage.py consume_tender_parsing
-    environment:
-    # Paths inside the container
-      CONDUTOR_PATH: /mnt/condutor/Tenders-bd/Condutor
-      INDEXER_NETWORK_PATH: /mnt/indexer/COSTING & INVOLVEMENT
-      SUPPLY_NETWORK_PATH: /mnt/supply
-      COSTING_FILE_NETWORK_HOST_PATH: /mnt/costing/COSTING & INVOLVEMENT
-      OLD_RA_EXCEL_PATH: /mnt/old-files/TENDER 2023-2024
-      OLD_FILES: /mnt/old-files/TENDER 2023-2024
-      TYPE_TEST_FILES_PATH: /mnt/condutor/Updated TTR
+  #   image: ghcr.io/laser-power-infra/django-worker:${APP_VERSION:-latest}
+  #   # container_name: parsing-worker
+  #   command: python manage.py consume_tender_parsing
+  #   environment:
+  #   # Paths inside the container
+  #     CONDUTOR_PATH: /mnt/condutor/Tenders-bd/Condutor
+  #     INDEXER_NETWORK_PATH: /mnt/indexer/COSTING & INVOLVEMENT
+  #     SUPPLY_NETWORK_PATH: /mnt/supply
+  #     COSTING_FILE_NETWORK_HOST_PATH: /mnt/costing/COSTING & INVOLVEMENT
+  #     OLD_RA_EXCEL_PATH: /mnt/old-files/TENDER 2023-2024
+  #     OLD_FILES: /mnt/old-files/TENDER 2023-2024
+  #     TYPE_TEST_FILES_PATH: /mnt/condutor/Updated TTR
 
-    volumes:
-      - condutor:/mnt/condutor
-      - indexer:/mnt/indexer
-      - supply:/mnt/supply
-      - costing:/mnt/costing
-      - old-files:/mnt/old-files
-      - ./credentials.json:/app/credentials:ro
-      - ./token.json:/app/token:rw
-    restart: unless-stopped
-    env_file:
-      - .env.production
-    networks:
-      - infra
+  #   volumes:
+  #     - condutor:/mnt/condutor
+  #     - indexer:/mnt/indexer
+  #     - supply:/mnt/supply
+  #     - costing:/mnt/costing
+  #     - old-files:/mnt/old-files
+  #     - ./credentials.json:/app/credentials:ro
+  #     - ./token.json:/app/token:rw
+  #   restart: unless-stopped
+  #   env_file:
+  #     - .env.production
+  #   networks:
+  #     - infra
 
-  api-server:
-    image: ghcr.io/laser-power-infra/django-worker:${APP_VERSION:-latest}
-    command: daphne -b 0.0.0.0 -p 8000 config.asgi:application
+  # api-server:
+  #   image: ghcr.io/laser-power-infra/django-worker:${APP_VERSION:-latest}
+  #   command: daphne -b 0.0.0.0 -p 8000 config.asgi:application
     
-    environment:
-      CHROME_PATH: /usr/bin/chromium
-    ports:
-      - "4120:8000"
-    restart: unless-stopped
-    env_file:
-      - .env.production
-    networks: 
-      - infra
+  #   environment:
+  #     CHROME_PATH: /usr/bin/chromium
+  #   ports:
+  #     - "4120:8000"
+  #   restart: unless-stopped
+  #   env_file:
+  #     - .env.production
+  #   networks: 
+  #     - infra
 
-  # automation-v2: stateless workers + webhook registration. Only DB is AUTOMATION_V2_DATABASE_URL.
+  # # automation-v2: stateless workers + webhook registration. Only DB is AUTOMATION_V2_DATABASE_URL.
   automation-v2-tasks:
     image: ghcr.io/laser-power-infra/django-worker:${APP_VERSION:-latest}
     command: python manage.py consume_tender_tasks_v2
@@ -91,16 +92,16 @@ services:
     networks:
       - infra
 
-  automation-v2-webhook-retry:
-    image: ghcr.io/laser-power-infra/django-worker:${APP_VERSION:-latest}
-    command: python manage.py consume_webhook_retry_v2
-    environment:
-      DJANGO_SETTINGS_MODULE: config.settings_v2
-    restart: unless-stopped
-    env_file:
-      - .env.production
-    networks:
-      - infra
+  # automation-v2-webhook-retry:
+  #   image: ghcr.io/laser-power-infra/django-worker:${APP_VERSION:-latest}
+  #   command: python manage.py consume_webhook_retry_v2
+  #   environment:
+  #     DJANGO_SETTINGS_MODULE: config.settings_v2
+  #   restart: unless-stopped
+  #   env_file:
+  #     - .env.production
+  #   networks:
+  #     - infra
 
   automation-v2-api:
     image: ghcr.io/laser-power-infra/django-worker:${APP_VERSION:-latest}
@@ -115,40 +116,40 @@ services:
     networks:
       - infra
 
-  kestra-automation:
-    build:
-      context: ./kestra
-      dockerfile: Dockerfile
-    container_name: kestra-automation
-    restart: unless-stopped
+  # kestra-automation:
+  #   build:
+  #     context: ./kestra
+  #     dockerfile: Dockerfile
+  #   container_name: kestra-automation
+  #   restart: unless-stopped
 
-    ports:
-      - "4121:8080"
+  #   ports:
+  #     - "4121:8080"
 
-    user: root
+  #   user: root
 
-    environment:
-      SECRET_KESTRA_EXTERNAL_API_KEY: ${KESTRA_EXTERNAL_API_KEY}
+  #   environment:
+  #     SECRET_KESTRA_EXTERNAL_API_KEY: ${KESTRA_EXTERNAL_API_KEY}
 
-      KESTRA_CONFIGURATION: |
-        micronaut:
-          io:
-            watch:
-              enabled: true
-              paths:
-                - /flows
+  #     KESTRA_CONFIGURATION: |
+  #       micronaut:
+  #         io:
+  #           watch:
+  #             enabled: true
+  #             paths:
+  #               - /flows
 
-    volumes:
-      - ./kestra/flows:/flows
-      - ./kestra/storage:/app/storage
-      - ./kestra/data:/app/data
-      - /var/run/docker.sock:/var/run/docker.sock
-      - /tmp:/tmp
+  #   volumes:
+  #     - ./kestra/flows:/flows
+  #     - ./kestra/storage:/app/storage
+  #     - ./kestra/data:/app/data
+  #     - /var/run/docker.sock:/var/run/docker.sock
+  #     - /tmp:/tmp
 
-    command: server local
+  #   command: server local
 
-    networks:
-      - infra
+  #   networks:
+  #     - infra
 
 volumes:
   condutor:

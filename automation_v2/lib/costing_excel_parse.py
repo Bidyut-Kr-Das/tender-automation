@@ -1,10 +1,12 @@
-"""Copied from tender_search/services/costing_excel_parse.py (_is_drive_link, _extract_drive_file_id, _download_drive_file, _find_all_header_rows, _parse_table, _find_price_basis, _find_applicable_index); DB code removed."""
+"""No DB code; used by both automation_v2 and tender_search."""
 import logging
-import os,json
+import os
 import re
 from datetime import datetime
 import requests
 from django.conf import settings
+
+from .boq_parser import _to_number
 logger = logging.getLogger(__name__)
 _DRIVE_FILE_ID_RE_1 = re.compile(r"/file/d/([^/?&#]+)")
 _DRIVE_FILE_ID_RE_2 = re.compile(r"[?&]id=([^&#]+)")
@@ -214,18 +216,6 @@ def _download_drive_file(file_id: str, dest_path: str) -> None:
         raise
 
 
-def _to_number(val):
-    if val is None:
-        return None
-    if isinstance(val, (int, float)):
-        return float(val) if val == val else None
-    s = str(val).strip().replace(",", "").strip()
-    try:
-        return float(s)
-    except ValueError:
-        return None
-
-
 def _strip_pct(val):
     if val is None:
         return ""
@@ -267,17 +257,12 @@ def _is_non_material_header(header_lower):
 
 def _find_all_header_rows(sheet):
     headers = []
-    rcount = 0
-    # print(sheet)
     for row in sheet.iter_rows():
-        # print(row)
         vals = [str(c.value).strip() if c.value else "" for c in row]
-        # print(f"count: {rcount+1} ----- {vals}")
         has_docket = any("docket" in v.lower() for v in vals)
         has_erp = any("propose" in v.lower() and "erp" in v.lower() for v in vals)
         if has_docket and has_erp:
             headers.append(row[0].row)
-        rcount+=1
     return headers
 
 
@@ -484,18 +469,15 @@ def _parse_table(ws, header_row_num, end_row):
         if total_price_val is not None:
             total_price_val = round(total_price_val, 2)
 
-        if cva_cols:
-            parts = []
-            for k in ("mfg", "intt", "insp", "prof", "ttr"):
-                col = cva_cols.get(k)
-                if col is None:
-                    continue
-                raw = _cell(row_obj, col)
-                if _has_value(raw):
-                    parts.append(_strip_pct(raw))
-            cva_str = "@".join(parts)
-        else:
-            cva_str = ""
+        parts = []
+        for k in ("mfg", "intt", "insp", "prof", "ttr"):
+            col = cva_cols.get(k)
+            if col is None:
+                continue
+            raw = _cell(row_obj, col)
+            if _has_value(raw):
+                parts.append(_strip_pct(raw))
+        cva_str = "@".join(parts)
 
         rows.append({
             "item_code": item_code,
