@@ -108,6 +108,7 @@ services:
     command: sh -c "python manage.py migrate --noinput && daphne -b 0.0.0.0 -p 8000 config.asgi:application"
     environment:
       DJANGO_SETTINGS_MODULE: config.settings_v2
+      CHROME_PATH: /usr/bin/chromium  # /api/sync-result scrapes in a browser
     ports:
       - "4122:8000"
     restart: unless-stopped
@@ -130,6 +131,7 @@ services:
 
   #   environment:
   #     SECRET_KESTRA_EXTERNAL_API_KEY: ${KESTRA_EXTERNAL_API_KEY}
+  #     SECRET_SYNC_RESULT_CLIENT_ID: ${SYNC_RESULT_CLIENT_ID}  # base64 whk_… client id
 
   #     KESTRA_CONFIGURATION: |
   #       micronaut:

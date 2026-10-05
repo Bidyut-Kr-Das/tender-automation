@@ -1,10 +1,12 @@
 # Schedulers
 
-This repo has **one** scheduled job: the Kestra flow `scheduler.sync_result`. It calls the legacy API once an hour, and the API pulls tender results from TenderTiger and Tender247 into the `TenderMerged` table.
+This repo has **one** scheduled job: the Kestra flow `scheduler.sync_result`. It calls `POST /api/sync-result` on `automation-v2-api` once an hour. The API scrapes today's tender results from TenderTiger and Tender247 and sends the rows to the webhook of the given `client_id` as `result.synced_*` events (see [automation-v2-webhook-events.md §6.5](automation-v2-webhook-events.md#65-resultsynced_-tender-result-sync)).
+
+> The sections below from §2 on describe the **legacy** route `POST /api/v1/sync-result/` (`api-server`), which wrote straight into `TenderMerged`. It is kept for reference; the v2 route does no DB writes.
 
 Nothing else runs on a timer. The v2 workers (`automation-v2-tasks`, `automation-v2-parsing`) only consume RabbitMQ jobs, and `automation-v2-api` has no scheduled calls.
 
-> **Current status: not running.** Since commit `474449f`, both services this job needs are commented out in `docker-compose.yml`: `kestra-automation` (the scheduler) and `api-server` (the route it calls). To turn it back on, see [Turning it back on](#turning-it-back-on).
+> **Current status: not running.** `kestra-automation` (the scheduler) is commented out in `docker-compose.yml`. The v2 route itself is live on `automation-v2-api`. To turn it back on, see [Turning it back on](#turning-it-back-on).
 
 ---
 
@@ -16,10 +18,10 @@ Nothing else runs on a timer. The v2 workers (`automation-v2-tasks`, `automation
 | Flow id / namespace | `sync_result` / `scheduler` |
 | Interval | Every hour, on the hour: cron `0 * * * *` |
 | Time zone | UTC, Kestra's default (no `timezone` is set). In IST that is hh:30. |
-| Calls | `POST http://automation-api-server:8000/api/v1/sync-result/` |
-| Body | `{"type": "both"}` |
-| Served by | `api-server` service, `tender_search.views.sync_result_view`, legacy settings (`config.settings`) |
-| Writes to | `TenderMerged` in the legacy database (`DATABASE_URL`) |
+| Calls | `POST http://automation-v2-api:8000/api/sync-result` |
+| Body | `{"type": "both", "client_id": "<SYNC_RESULT_CLIENT_ID>"}` |
+| Served by | `automation-v2-api` service, `automation_v2.views.sync_result` (`config.settings_v2`) |
+| Output | `result.synced_success` / `result.synced_failed` webhook per source. No DB writes. |
 
 Kestra loads the flow from `./kestra/flows`, mounted at `/flows` with file watching turned on. Editing the YAML on the server updates the flow without a restart.
 
@@ -143,15 +145,11 @@ Only tenders with `apm = "YES"` and `participated = true` are ever updated.
 
 ## Turning it back on
 
-1. In `docker-compose.yml`, uncomment `api-server` and `kestra-automation`.
-2. In `.github/workflows/deploy.yml`, add both services to the `docker compose up` line. The deploy only starts the services named on that line:
-
-   ```
-   docker compose up -d --remove-orphans --scale automation-v2-tasks=2 automation-v2-tasks automation-v2-parsing automation-v2-api api-server kestra-automation
-   ```
-3. Check the hostname issue above.
+1. Register a webhook on `/webhooks` (port 4122) subscribed to `result.synced_success` and `result.synced_failed`. Put its client ID in `.env` as `SYNC_RESULT_CLIENT_ID`, base64-encoded (Kestra `SECRET_*` rule).
+2. In `docker-compose.yml`, uncomment `kestra-automation` (its `SECRET_SYNC_RESULT_CLIENT_ID` line is already there).
+3. In `.github/workflows/deploy.yml`, add `kestra-automation` to the `docker compose up` line. The deploy only starts the services named on that line.
 4. To trigger a run by hand, use **Execute** on `scheduler.sync_result` in the Kestra UI (port 4121), or call the route directly:
 
    ```bash
-   curl -X POST http://<server>:4120/api/v1/sync-result/ -H "Content-Type: application/json" -d '{"type": "tiger"}'
+   curl -X POST http://<server>:4122/api/sync-result -H "Content-Type: application/json" -d '{"type": "tiger", "client_id": "whk_..."}'
    ```

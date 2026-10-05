@@ -6,51 +6,13 @@ from playwright.sync_api import sync_playwright
 from django.conf import settings
 
 from automation_v2.lib.browser import detect_chrome_path
+from automation_v2.lib.result_scrapers import _click_result_tab, _click_tenders_download, _iter_rows as _iter_tiger_rows
 from automation_v2.lib.tender_tiger import _tiger_login
 
 if hasattr(asyncio, "WindowsProactorEventLoopPolicy"):
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
 logger = logging.getLogger(__name__)
-
-
-def _click_result_tab(page) -> None:
-    # ponytail: exact locator — no generic fallback
-    loc = page.locator("a.tab-item.aiSearchTab.airesult-tab[title='Result']")
-    loc.first.wait_for(state="visible", timeout=15000)
-    loc.first.scroll_into_view_if_needed(timeout=5000)
-    print(f"[TigerResult] Clicking Result tab")
-    loc.first.click()
-    page.wait_for_timeout(2000)
-    try:
-        page.wait_for_load_state("networkidle", timeout=15000)
-    except Exception:
-        pass
-
-
-def _click_tenders_download(page) -> Path:
-    # ponytail: parent div.filter-btn-listing-tr → span — scopes to Tenders button
-    parent = page.locator('div.filter-btn-listing-tr')
-    parent.first.wait_for(state="visible", timeout=15000)
-    loc = parent.locator('span.icon-label.arrow-none')
-    loc.first.wait_for(state="visible", timeout=15000)
-    loc.first.scroll_into_view_if_needed(timeout=5000)
-    print(f"[TigerResult] Clicking span.icon-label.arrow-none")
-    with page.expect_download(timeout=60000) as dl:
-        try:
-            loc.first.click(force=True)
-        except Exception:
-            loc.first.evaluate("el => el.click()")
-    download = dl.value
-    download_dir = Path(settings.TENDER_PARSING_TEMP_DIR)
-    download_dir.mkdir(parents=True, exist_ok=True)
-    suggested = download.suggested_filename or "tenders.xlsx"
-    dest = download_dir / suggested
-    download.save_as(str(dest))
-    print(f"[TigerResult] Downloaded: {dest}")
-    if not dest.exists() or dest.stat().st_size == 0:
-        raise RuntimeError(f"Tenders excel not captured: {dest}")
-    return dest
 
 
 def _parse_tenders_excel(path: Path) -> list[str]:
@@ -71,21 +33,6 @@ def _parse_tenders_excel(path: Path) -> list[str]:
     logger.info("[TigerResult] Excel headers: %s", headers)
     print(f"[TigerResult] Excel headers: {headers}")
     return headers
-
-
-def _iter_tiger_rows(path: Path):
-    import openpyxl
-
-    wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
-    ws = wb.active
-    if ws is None:
-        wb.close()
-        return
-    try:
-        for row in ws.iter_rows(values_only=True):
-            yield row
-    finally:
-        wb.close()
 
 
 def _log_tenders_updates(path: Path) -> list[dict]:
