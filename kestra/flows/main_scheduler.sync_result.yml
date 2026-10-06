@@ -9,11 +9,8 @@ triggers:
 tasks:
   - id: call_sync_result
     type: io.kestra.plugin.core.http.Request
-    uri: "http://automation-api-server:8000/api/v1/sync-result/"
+    uri: "http://automation-v2-api:8000/api/sync-result"
     method: POST
     contentType: application/json
-    body:
-      type: both
-    headers:
-      Authorization: "Bearer {{ secret('KESTRA_EXTERNAL_API_KEY') }}"
-      x-api-key: "{{ secret('KESTRA_EXTERNAL_API_KEY') }}"
+    body: |
+      {"type": "both", "client_id": "{{ secret('SYNC_RESULT_CLIENT_ID') }}"}

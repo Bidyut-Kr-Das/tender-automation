@@ -9,4 +9,6 @@ WEBHOOK_EVENTS: dict[str, str] = {
     "file.fetched_failed": "Tender files could not be downloaded",
     "file.parsed_success": "Tender file parsed",
     "file.parsed_failed": "Tender file could not be parsed",
+    "result.synced_success": "Tender results scraped from TenderTiger / Tender247",
+    "result.synced_failed": "Tender results could not be scraped",
 }

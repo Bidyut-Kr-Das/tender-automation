@@ -8,6 +8,7 @@ router.register("api/webhooks", views.WebhookViewSet)
 
 urlpatterns = [
     path("api/webhooks/events", views.webhook_events),  # must come before the router's detail route
+    path("api/sync-result", views.sync_result),
     path("webhooks", views.webhooks_page),
     *router.urls,
 ]

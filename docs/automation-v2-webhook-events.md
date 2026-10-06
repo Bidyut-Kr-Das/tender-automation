@@ -93,6 +93,8 @@ Rules for these fields:
 | `file.fetched_failed` | The download failed, the payload was invalid, or the job crashed. |
 | `file.parsed_success` | The file was downloaded and parsed. |
 | `file.parsed_failed` | The download or parse failed, the payload was invalid, or the job crashed. |
+| `result.synced_success` | Today's tender results were scraped from one source (section 6.5). |
+| `result.synced_failed` | The result scrape for one source failed (login, download, missing columns, missing credentials). |
 
 These names are fixed. Match on them exactly.
 
@@ -501,6 +503,72 @@ Typical `error` values:
 - `FileNotFoundError: Costing file not found at path: ...`
 - `ValueError: AUTO CALCULATION SHEET tab not found`
 - `ValueError: No valid table headers found (DOCKET NO + PROPOSE ERP)`
+
+### 6.5 `result.synced_*`: tender result sync
+
+This replaces the legacy `POST /api/v1/sync-result/`. It is not a queue job; you start it over HTTP on `automation-v2-api`:
+
+```http
+POST /api/sync-result
+Content-Type: application/json
+
+{"type": "both", "client_id": "whk_3f9a21c0b7e4d5a6"}
+```
+
+| Field | Notes |
+|---|---|
+| `client_id` (or `clientId`) | Required. `400` if missing, `404` if no webhook has this client ID. |
+| `type` (or `types`, `source`) | `tiger`, `t247` / `247` / `tender247`, `both`, or a list. Missing or unknown means both. |
+
+The route answers `202 {"accepted": true, "client_id": "...", "sources": ["tiger", "t247"]}` at once. The scrape runs in the background (minutes, it logs in with a real browser). Each source then sends **one** event, so `both` sends two. Sources run one after the other; one failing does not stop the other.
+
+`data` has no `referenceNo`. `data.type` is `TENDER_TIGER_RESULT` or `TENDER247_RESULT`.
+
+| Field | Type | Notes |
+|---|---|---|
+| `file` | string | Name of the downloaded result Excel |
+| `rows[].referenceNo` | string | Reference before any `<br>` |
+| `rows[].reverseAuction` | bool | `true` when text follows the `<br>` |
+| `rows[].l1` | string | L1 / winner bidder |
+| `rows[].isLaser` | bool | L1 contains "laser power" |
+| `rows[].contractAmount` | string | As in the Excel |
+| `rows[].contractValue` | string | Plain number, `"1.5 Cr"` becomes `"15000000"` |
+| `rows[].competitors` | string \| null | Tender247 `Participator Bidders`; `null` for TenderTiger |
+| `rows[].tenderStage` | string \| null | Tender247 `Tender Stage`; `null` for TenderTiger |
+| `rows[].currentStatus` | string \| null | `AWARDED`, `FINANCIAL EVALUATION` or `TECHNICAL BID OPENED` mapped from `tenderStage`, else `null` |
+
+automation-v2 has no tender DB, so rows are **not** filtered or applied. The legacy route only updated tenders with `apm = "YES"` and `participated = true`, skipped rows whose L1 had not changed, and set `currentStatus` to `FINANCIAL EVALUATION` (unless already `AWARDED`/`CANCELLED`) when the row had none. Do the same in the receiver if you need it.
+
+```json
+{
+  "id": "evt_93a4b5c6d7e8f90a1b2c3d4e5f607182",
+  "event": "result.synced_success",
+  "created_at": "2026-10-05T10:02:41.118204+00:00",
+  "data": {
+    "type": "TENDER247_RESULT",
+    "result": {
+      "file": "Today_Results.xlsx",
+      "rows": [
+        {"referenceNo": "64265344B", "reverseAuction": false, "l1": "Laser Power & Infra Ltd",
+         "isLaser": true, "contractAmount": "1.5 Cr", "contractValue": "15000000",
+         "competitors": "A Ltd, B Ltd", "tenderStage": "AOC", "currentStatus": "AWARDED"}
+      ]
+    },
+    "error": null
+  }
+}
+```
+
+```json
+{
+  "id": "evt_a4b5c6d7e8f90a1b2c3d4e5f60718293",
+  "event": "result.synced_failed",
+  "created_at": "2026-10-05T10:01:12.502117+00:00",
+  "data": {"type": "TENDER_TIGER_RESULT", "result": null, "error": "RuntimeError: Tiger login failed (url=https://...)"}
+}
+```
+
+Typical `error` values: `RuntimeError: ... login failed`, `RuntimeError: Tenders excel not captured: ...`, `ValueError: missing columns, headers=[...]`, `ValueError: TENDER_TIGER_EMAIL and TENDER_TIGER_PASSWORD must be configured`, Playwright `TimeoutError: ...`.
 
 ---
 
